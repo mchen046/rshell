@@ -1,3 +1,17 @@
+/*
+Michael Chen
+mchen046
+SID: 861108671
+CS100 Spring 2015: hw0-rshell
+https://www.github.com/mchen046/rshell/src/main.cpp
+*/
+/*
+Worklist:
+bug when running: ls -a; echo hello; mkdir test;
+	the command exits when mkdir test finishes.
+problem when running ls -a multiple times
+	ls -a breaks on the second execution "error in execvp: Bad address
+*/
 #include <iostream>
 #include <unistd.h>
 #include <sys/types.h>
@@ -76,21 +90,23 @@ int main(){
 				exit(1);
 			}
 			else if(pid == 0){ //child process
-				//cout << "in child process\n";
+				cout << "in child process\n";
 				if(execvp(cmdLinePart[0], cmdLinePart) == -1){
 					perror("error in execvp");
 				}
 				exit(1);
 			}
 			else if(pid > 0){ //parent process
+				cout << "in parent process\n";
 				if(wait(0) == -1){
 					perror("error in wait()");
 				}
 			}
 			//delete[] *cmdLinePart;
 		}
-		delete[] cmdLine;
-		delete[] cmdArray;
+		//delete[] cmdLine;
+		//delete[] cmdArray;
 	}
+	cout << "reached end of program\n";
 	return 0;
 }
