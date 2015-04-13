@@ -87,9 +87,10 @@ int main(){
 					perror("error in wait()");
 				}
 			}
+			//delete[] *cmdLinePart;
 		}
-		//delete[] *cmdstrtok; //deallocate cmdstrtok
-		//delete[] cmdArray;
+		delete[] cmdLine;
+		delete[] cmdArray;
 	}
 	return 0;
 }
