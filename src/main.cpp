@@ -65,15 +65,28 @@ int main(){
 
 			//creating cmdLinePart
 			char **cmdLinePart = new char*[cmd.size()];
+			
+			//finding size of cmdLinePart
+			int cmdLinePartSize = 0;
+			for(tokenizer<char_separator<char> >::iterator it = mytok.begin(); it!=mytok.end(); it++){
+				cmdLinePartSize++;
+			}
 			int i = 0;
-			for(tokenizer <char_separator<char> >::iterator it = mytok.begin(); it!=mytok.end(); it++){
-				char *token = new char[cmd.size()];
+			for(tokenizer<char_separator<char> >::iterator it = mytok.begin(); it!=mytok.end(); it++){
+				char *token = new char[cmdLinePartSize+1];
 				string cmdString = static_cast<string>(*it);
 				for(unsigned int j = 0; j!=cmdString.size(); j++){
 					token[j] = cmdString[j];
 				}
+
 				cmdLinePart[i] = token;
 				i++;
+
+				tokenizer<char_separator<char> >::iterator itA = it;
+				if(++itA==mytok.end()){
+					//cout << "adding NULL to end of cmdLinePart\n";
+					cmdLinePart[i+1] = NULL;
+				}
 			}
 
 			cmdLine = strtok(NULL, ";"); //parse ";"
@@ -86,7 +99,8 @@ int main(){
 			int pid = fork();
 			//cout << "pid: " << pid << endl;
 			if(pid == -1){ //error
-				perror("fork() error");
+			perror("fork() error");
+			cout << "exiting pid error msg\n";
 				exit(1);
 			}
 			else if(pid == 0){ //child process
@@ -94,6 +108,7 @@ int main(){
 				if(execvp(cmdLinePart[0], cmdLinePart) == -1){
 					perror("error in execvp");
 				}
+				cout << "exiting child process\n";
 				exit(1);
 			}
 			else if(pid > 0){ //parent process
