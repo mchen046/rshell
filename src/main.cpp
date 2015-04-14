@@ -18,6 +18,11 @@ Fixed:
 problem when running ls -a multiple times
 	ls -a breaks on the second execution "error in execvp: Bad address
 */
+/*
+README:
+ex command?
+parentheses and quotes
+*/
 #include <iostream>
 #include <unistd.h>
 #include <sys/types.h>
@@ -33,30 +38,111 @@ problem when running ls -a multiple times
 using namespace std;
 using namespace boost;
 
-char** parseString(string cmd);
+int sizeOfPart(tokenizer<char_separator<char> > mytok){
+	int size= 0;
+	for(tokenizer<char_separator<char> >::iterator it = mytok.begin(); it!=mytok.end(); it++){
+		size++;
+	}
+	return size;
+}
+
+char** parseSpace(char *cmdLine){
+	//parsing " "
+	string str = static_cast<string>(cmdLine);
+	char_separator<char> delim(" ");
+	tokenizer< char_separator<char> > mytok(str, delim);
+
+	int cmdLinePartSize = sizeOfPart(mytok);
+			
+	//creating cmdLinePart
+	char **cmdLinePart = new char*[cmdLinePartSize+1];
+
+	//cout << "cmdLinePartSize: " << cmdLinePartSize << endl;
+	int i = 0;
+	for(tokenizer<char_separator<char> >::iterator it = mytok.begin(); it!=mytok.end(); it++){
+		string cmdString = static_cast<string>(*it);
+		char *token = new char[cmdString.size()];
+		for(unsigned int j = 0; j!=cmdString.size(); j++){
+			token[j] = cmdString[j];
+		}
+
+		cmdLinePart[i] = token;
+		i++;
+
+		tokenizer<char_separator<char> >::iterator itA = it;
+		if(++itA==mytok.end()){
+			//cout << "adding NULL to end of cmdLinePart\n";
+			cmdLinePart[i+1] = NULL;
+		}
+	}
+	return cmdLinePart;
+	//end creating cmdLinePart
+}
 
 void connectorAnd();
 
-void bitOr();
+void connectorOr();
 
-void printCmdLinePart(char**cmdLinePart, int cmdLinePartSize){
+bool isText(char* cmdText, string text){
+	if(!(cmdText[text.size()-1]==text[text.size()-1] && cmdText[text.size()]=='\0' && text[text.size()]=='\0')){
+		return false;
+	}
+	for(unsigned int i = 0; cmdText[i]!='\0' && i<text.size(); i++){
+		if(cmdText[i]!=text[i])
+			return false;
+	}
+	return true;
+}
+
+bool containsText(char* cmdText, string text){
+	unsigned int count = 0;
+	int j = 0;
+	for(unsigned int i = 0; cmdText[i]!='\0'; i++){
+		if(cmdText[i]!=text[j]){
+			count = 0;
+			j = 0;
+		}
+		if(cmdText[i]==text[j]){
+			count++;
+		}
+		if(count == text.size()){
+			return true;
+		}
+		j++;	
+	}
+	return false;
+}
+
+void printCmdLinePart(char**cmdLinePart, int cmdLinePartSize){ //buggy when printing
 	for(int i = 0; i<=cmdLinePartSize+1; i++){
 		cout << cmdLinePart[i] << endl;
 	}
 }
 
-void checkExitCmd(char* cmdText){ //exit command
-	char exitText[] = {'e','x', 'i', 't'};
-	bool same = true;
-	for(int i = 0; cmdText[i]!='\0' && same; i++){
-		if(cmdText[i]!=exitText[i])
-			same = false;
-	}
-	if(same){
-		cout << "exit command called\n";
+void execCmd(char** cmdLinePart){ //process spawning
+	int pid = fork();
+	//cout << "pid: " << pid << endl;
+	if(pid == -1){ //error
+	perror("fork() error");
+	cout << "exiting pid error msg\n";
 		exit(1);
 	}
+	else if(pid == 0){ //child process
+		//cout << "in child process\n";
+		if(execvp(cmdLinePart[0], cmdLinePart) == -1){
+			perror("error in execvp");
+		}
+		cout << "exiting child process\n";
+		exit(1);
+	}
+	else if(pid > 0){ //parent process
+		//cout << "in parent process\n";
+		if(wait(0) == -1){
+			perror("error in wait()");
+		}
+	}
 }
+
 
 int main(){
 	while(1){
@@ -75,75 +161,66 @@ int main(){
 		char *cmdLine = strtok(cmdArray, ";"); //parsing ";"
 		while(!cmdLineDone){
 			cout << "cmdLine: " << cmdLine << endl;
-			//parsing " "
-			string str = static_cast<string>(cmdLine);
-			char_separator<char> delim(" ");
-			tokenizer< char_separator<char> > mytok(str, delim);
-
-			//finding size of cmdLinePart
-			int cmdLinePartSize = 0;
-			for(tokenizer<char_separator<char> >::iterator it = mytok.begin(); it!=mytok.end(); it++){
-				cmdLinePartSize++;
-			}
-			
-			//creating cmdLinePart
-			char **cmdLinePart = new char*[cmdLinePartSize+1];
-
-			//cout << "cmdLinePartSize: " << cmdLinePartSize << endl;
-			int i = 0;
-			for(tokenizer<char_separator<char> >::iterator it = mytok.begin(); it!=mytok.end(); it++){
-				string cmdString = static_cast<string>(*it);
-				char *token = new char[cmdString.size()];
-				for(unsigned int j = 0; j!=cmdString.size(); j++){
-					token[j] = cmdString[j];
-				}
-
-				cmdLinePart[i] = token;
-				i++;
-
-				tokenizer<char_separator<char> >::iterator itA = it;
-				if(++itA==mytok.end()){
-					//cout << "adding NULL to end of cmdLinePart\n";
-					cmdLinePart[i+1] = NULL;
-				}
-			}
-			//end creating cmdLinePart
-
-
 			//parsing && or ||
-			//str = static_cast<string>(
+			
+			//parse &&
+				//if contains ||
+					//parse ||
+					//parse " "
+					//execute command
+					//if command fails, check next command after ||
+						//if the new command fails, move on to after semicolon
+						//else if the command passes, 
+			//parse ||
+
+			char *savePtr;
+			char *token;
+			token = strtok_r(cmdLine, "&&", &savePtr); //parse &&
+			if(containsText(token, "||")){
+				token = strtok_r(NULL, "||", &savePtr); //parse ||
+				char**cmdBool = parseSpace(token); //parse space
+				if(execCmd(cmdBool); //execute command
+				//if command succeeds, can move on and parse after &&
+				//else if commands fails, recursively call strtok_r for next statement after || 
+			}
+			else{
+
+			token = strtok_r(cmdLine, "||", &savePtr); //parse ||
+			
 
 
-			//printCmdLinePart(cmdLinePart, cmdLinePartSize);
+
+
+
+
+
+
+
+			char**cmdLinePart = parseSpace(cmdLine);
+
 			cmdLine = strtok(NULL, ";"); //parse ";"
+
 			if(cmdLine==NULL){
 				cmdLineDone = true;
 			}
-			checkExitCmd(cmdLinePart[0]); //check for exit command
+
+			if(isText(cmdLinePart[0], "exit")){
+				return 0;
+			}
+
+			//checking for quotes and parentheses
+			bool valid = true;
+			for(int i = 0; cmdLinePart[i]!='\0' && valid; i++){
+				if(containsText(cmdLinePart[i], "\"") || containsText(cmdLinePart[i], "(") || containsText(cmdLinePart[i], ")")){
+					cout << "Syntax error! Command contains parentheses and/or quotes.\n";
+					valid = false;
+				}
+			}
 
 			//process spawning
-			int pid = fork();
-			//cout << "pid: " << pid << endl;
-			if(pid == -1){ //error
-			perror("fork() error");
-			cout << "exiting pid error msg\n";
-				exit(1);
+			if(valid){
+				execCmd(cmdLinePart);
 			}
-			else if(pid == 0){ //child process
-				//cout << "in child process\n";
-				if(execvp(cmdLinePart[0], cmdLinePart) == -1){
-					perror("error in execvp");
-				}
-				cout << "exiting child process\n";
-				exit(1);
-			}
-			else if(pid > 0){ //parent process
-				//cout << "in parent process\n";
-				if(wait(0) == -1){
-					perror("error in wait()");
-				}
-			}
-			//delete[] *cmdLinePart;
 		}
 		//delete[] cmdLine;
 		//delete[] cmdArray;
