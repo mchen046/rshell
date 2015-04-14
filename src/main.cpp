@@ -119,8 +119,9 @@ void printCmdLinePart(char**cmdLinePart, int cmdLinePartSize){ //buggy when prin
 	}
 }
 
-void execCmd(char** cmdLinePart){ //process spawning
+int execCmd(char** cmdLinePart){ //process spawning
 	int pid = fork();
+	int success = 0;
 	//cout << "pid: " << pid << endl;
 	if(pid == -1){ //error
 	perror("fork() error");
@@ -131,6 +132,7 @@ void execCmd(char** cmdLinePart){ //process spawning
 		//cout << "in child process\n";
 		if(execvp(cmdLinePart[0], cmdLinePart) == -1){
 			perror("error in execvp");
+			success = -1;
 		}
 		cout << "exiting child process\n";
 		exit(1);
@@ -141,6 +143,7 @@ void execCmd(char** cmdLinePart){ //process spawning
 			perror("error in wait()");
 		}
 	}
+	return success;
 }
 
 
@@ -173,20 +176,34 @@ int main(){
 						//else if the command passes, 
 			//parse ||
 
-			char *savePtr;
-			char *token;
-			token = strtok_r(cmdLine, "&&", &savePtr); //parse &&
-			if(containsText(token, "||")){
-				token = strtok_r(NULL, "||", &savePtr); //parse ||
-				char**cmdBool = parseSpace(token); //parse space
-				if(execCmd(cmdBool); //execute command
-				//if command succeeds, can move on and parse after &&
-				//else if commands fails, recursively call strtok_r for next statement after || 
+			char *parentPtr, childPtr, childPtrNext, token, tokenNext;
+			char **cmdConnector;
+			bool nextCmd = true;
+			token = strtok_r(cmdLine, "&&", &parentPtr); //parse &&
+			while(containsText(token, "||") && nextCmd){
+				token = strtok_r(NULL, "||", &parentPtr); //parse ||
+				cmdConnector = parseSpace(token); //parse space
+				if(execCmd(cmdConnector)==-1){ //if command fails
+					token = strtok_r(cmdLine, "&&", &parentPtr); //parse &&
+					nextCmd = true;
+				}
+				else{
+					nextCmd = false;
+				}//command succeeds, move on to next one after semicolon
 			}
-			else{
+			while(containsText(token, "&&") && nextCmd){
+				token = strtok_r(NULL, "&&", &parentPtr); //parse &&
+				cmdConnector = parseSpace(token); //parse space
+				if(execCmd(cmdConnector)==-1){ //if command fails
+					nextCmd = false;
+				}
+				else{ //command succeeds
+					token = strtok_r(NULL, "||", &parentPtr);
+					nextCmd = true;
 
-			token = strtok_r(cmdLine, "||", &savePtr); //parse ||
-			
+
+
+								
 
 
 
