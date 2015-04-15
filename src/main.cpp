@@ -104,11 +104,11 @@ bool containsText(char* cmdText, string text){
 		}
 		if(cmdText[i]==text[j]){
 			count++;
+			j++;
 		}
 		if(count == text.size()){
 			return true;
 		}
-		j++;	
 	}
 	return false;
 }
@@ -164,44 +164,98 @@ int main(){
 		char *cmdLine = strtok(cmdArray, ";"); //parsing ";"
 		while(!cmdLineDone){
 			cout << "cmdLine: " << cmdLine << endl;
-			//parsing && or ||
-			
-			//parse &&
-				//if contains ||
-					//parse ||
-					//parse " "
-					//execute command
-					//if command fails, check next command after ||
-						//if the new command fails, move on to after semicolon
-						//else if the command passes, 
-			//parse ||
 
-			char *parentPtr, childPtr, childPtrNext, token, tokenNext;
+			//parsing && or ||
+			char *parentPtr, *token;
 			char **cmdConnector;
 			bool nextCmd = true;
-			token = strtok_r(cmdLine, "&&", &parentPtr); //parse &&
-			while(containsText(token, "||") && nextCmd){
-				token = strtok_r(NULL, "||", &parentPtr); //parse ||
-				cmdConnector = parseSpace(token); //parse space
-				if(execCmd(cmdConnector)==-1){ //if command fails
-					token = strtok_r(cmdLine, "&&", &parentPtr); //parse &&
-					nextCmd = true;
-				}
-				else{
-					nextCmd = false;
-				}//command succeeds, move on to next one after semicolon
+			bool nextConnector = false;
+
+
+		
+
+			//setting initial token
+			/*if(containsText(cmdLine,"&&") && !containsText(cmdLine, "||")){
+				token = strtok_r(cmdLine, "&&", &parentPtr);
 			}
-			while(containsText(token, "&&") && nextCmd){
-				token = strtok_r(NULL, "&&", &parentPtr); //parse &&
-				cmdConnector = parseSpace(token); //parse space
-				if(execCmd(cmdConnector)==-1){ //if command fails
-					nextCmd = false;
+			else if(containsText(cmdLine, "||") && !containsText(cmdLine, "&&")){
+				token = strtok_r(cmdLine, "||", &parentPtr);
+			}
+			else if(containsText(cmdLine, "||") && containsText(cmdLine, "&&")){
+				token = strtok_r(cmdLine, "&&", &parentPtr);
+			}*/
+			
+			if(!containsText(cmdLine, "||") && !containsText(cmdLine, "&&")){
+				//cout << "nextCmd set to false\n";
+				nextCmd = false;
+			}
+			else{
+				token = strtok_r(cmdLine, "", &parentPtr);
+			}
+
+			while(nextCmd){
+				while(containsText(token, "||") && nextCmd && !nextConnector){
+					cout << "in || connector\n";
+					cout << "token: " << token << endl;
+					token = strtok_r(cmdLine, "||", &parentPtr); //parse ||
+					cout << "token after parsing ||: " << token << endl;
+					cout << "parentPtr: " << parentPtr << endl;
+					cmdConnector = parseSpace(token); //parse space
+					if(execCmd(cmdConnector)==-1){ //if command fails
+						
+						if(containsText(parentPtr,"&&") && !containsText(parentPtr, "||")){
+							nextConnector = true;
+						}
+						else if(containsText(parentPtr, "||") && !containsText(parentPtr, "&&")){
+							token = strtok_r(cmdLine, "||", &parentPtr);
+						}
+						else if(containsText(parentPtr, "||") && containsText(parentPtr, "&&")){
+							token = strtok_r(cmdLine, "&&", &parentPtr);
+						}	
+						nextCmd = true;
+						if(!containsText(parentPtr, "||") && !containsText(parentPtr, "&&")){
+							nextCmd = false;
+						}
+
+					}
+					else{
+						nextCmd = false;
+					}//command succeeds, move on to next one after semicolon
 				}
-				else{ //command succeeds
-					token = strtok_r(NULL, "||", &parentPtr);
-					nextCmd = true;
+				nextConnector = false;
+				while(containsText(token, "&&") && nextCmd && !nextConnector){
+					cout << "in && connector\n";
+					cout << "token: " << token << endl;
+					token = strtok_r(cmdLine, "&&", &parentPtr); //parse &&
+					cout << "token after parsing &&: " << token << endl;
+					cout << "parentPtr: " << parentPtr << endl;
+					cmdConnector = parseSpace(token); //parse space
+					if(execCmd(cmdConnector)==-1){ //if command fails
+						nextCmd = false;
+						token = parentPtr;
+					}
+					else{ //command succeeds
 
-
+						if(containsText(parentPtr,"&&") && !containsText(parentPtr, "||")){
+							token = strtok_r(cmdLine, "&&", &parentPtr);	
+						}
+						else if(containsText(parentPtr, "||") && !containsText(parentPtr, "&&")){
+							nextConnector = true;
+						}
+						else if(containsText(parentPtr, "||") && containsText(parentPtr, "&&")){
+							token = strtok_r(cmdLine, "&&", &parentPtr);
+						}	
+						nextCmd = true;
+						if(!containsText(parentPtr, "||") && !containsText(parentPtr, "&&")){
+							nextCmd = false;
+							token = parentPtr;
+						}
+					}
+				}
+				nextConnector = false;
+			}
+			
+			cout << "final token: " << token << endl;
 
 								
 
