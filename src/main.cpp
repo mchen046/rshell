@@ -12,6 +12,14 @@ bug when running: ls -a; echo hello; mkdir test;
 	concatenates an extra " e" after original command
 fix: have to have a NULL at the end of the char* command
 currently trying to implement connectors || &&
+
+fix boolean operators? partially working
+	compact and optimize
+execCmd is not able to tell if a command fails or not
+	success variable assignment is lost as soon as child exits
+	cannot tell if success or not while in parent
+compact and optimize!!!
+fix memory leaks
 */
 /*
 Fixed:
@@ -121,18 +129,17 @@ void printCmdLinePart(char**cmdLinePart, int cmdLinePartSize){ //buggy when prin
 
 int execCmd(char** cmdLinePart){ //process spawning
 	int pid = fork();
-	int success = 0;
+	int success = -1;
 	//cout << "pid: " << pid << endl;
 	if(pid == -1){ //error
-	perror("fork() error");
-	cout << "exiting pid error msg\n";
+		perror("fork() error");
+		cout << "exiting pid error msg\n";
 		exit(1);
 	}
 	else if(pid == 0){ //child process
 		//cout << "in child process\n";
 		if(execvp(cmdLinePart[0], cmdLinePart) == -1){
 			perror("error in execvp");
-			success = -1;
 		}
 		cout << "exiting child process\n";
 		exit(1);
@@ -142,7 +149,11 @@ int execCmd(char** cmdLinePart){ //process spawning
 		if(wait(0) == -1){
 			perror("error in wait()");
 		}
+		else{
+			success = 1;
+		}
 	}
+	cout << "success: " << success << endl;
 	return success;
 }
 
@@ -170,6 +181,7 @@ int main(){
 			char **cmdConnector;
 			bool nextCmd = true;
 			bool nextConnector = false;
+			bool finalCmd = true;
 
 
 		
@@ -185,19 +197,58 @@ int main(){
 				token = strtok_r(cmdLine, "&&", &parentPtr);
 			}*/
 			
+
+
+
 			if(!containsText(cmdLine, "||") && !containsText(cmdLine, "&&")){
 				//cout << "nextCmd set to false\n";
 				nextCmd = false;
 			}
-			else{
-				token = strtok_r(cmdLine, "", &parentPtr);
+			else if(containsText(cmdLine, "||") && !containsText(cmdLine, "&&")){
+				//cout << "initial parse ||\n";
+				token = strtok_r(cmdLine, "||", &parentPtr);
+				if(!containsText(parentPtr, "&&") && !containsText(parentPtr, "||")){
+					cmdConnector = parseSpace(token);
+					if(execCmd(cmdConnector)!=-1){ //succeeds
+						finalCmd = false;
+						nextCmd = false;
+					}
+					else{
+						token = strtok_r(NULL, "||", &parentPtr);
+						cmdLine = token;
+						nextCmd = false;
+					}
+				}
 			}
+			else if(containsText(cmdLine, "&&") && !containsText(cmdLine, "||")){
+				//cout << "initial parse &&\n";
+				token = strtok_r(cmdLine, "&&", &parentPtr);
+				if(!containsText(parentPtr, "&&") && !containsText(parentPtr, "||")){
+					cmdConnector = parseSpace(token);
+					if(execCmd(cmdConnector)==-1){ //fails
+						cout << "command failed!\n";
+						finalCmd = false;
+						nextCmd = false;
+					}
+					else{
+						token = strtok_r(NULL, "&&", &parentPtr);
+						cmdLine = token;
+						nextCmd = false;
+					}
+				}
+			}
+			else{
+				token = strtok_r(cmdLine, "&&", &parentPtr);
+			}
+			
+
+
 
 			while(nextCmd){
 				while(containsText(token, "||") && nextCmd && !nextConnector){
 					cout << "in || connector\n";
 					cout << "token: " << token << endl;
-					token = strtok_r(cmdLine, "||", &parentPtr); //parse ||
+					token = strtok_r(NULL, "||", &parentPtr); //parse ||
 					cout << "token after parsing ||: " << token << endl;
 					cout << "parentPtr: " << parentPtr << endl;
 					cmdConnector = parseSpace(token); //parse space
@@ -207,13 +258,15 @@ int main(){
 							nextConnector = true;
 						}
 						else if(containsText(parentPtr, "||") && !containsText(parentPtr, "&&")){
-							token = strtok_r(cmdLine, "||", &parentPtr);
+							token = strtok_r(NULL, "||", &parentPtr);
 						}
 						else if(containsText(parentPtr, "||") && containsText(parentPtr, "&&")){
-							token = strtok_r(cmdLine, "&&", &parentPtr);
+							token = strtok_r(NULL, "&&", &parentPtr);
 						}	
 						nextCmd = true;
 						if(!containsText(parentPtr, "||") && !containsText(parentPtr, "&&")){
+							token = strtok_r(NULL, "||", &parentPtr);
+							cmdLine = token;
 							nextCmd = false;
 						}
 
@@ -226,71 +279,63 @@ int main(){
 				while(containsText(token, "&&") && nextCmd && !nextConnector){
 					cout << "in && connector\n";
 					cout << "token: " << token << endl;
-					token = strtok_r(cmdLine, "&&", &parentPtr); //parse &&
+					token = strtok_r(NULL, "&&", &parentPtr); //parse &&
 					cout << "token after parsing &&: " << token << endl;
 					cout << "parentPtr: " << parentPtr << endl;
 					cmdConnector = parseSpace(token); //parse space
 					if(execCmd(cmdConnector)==-1){ //if command fails
 						nextCmd = false;
-						token = parentPtr;
 					}
 					else{ //command succeeds
 
 						if(containsText(parentPtr,"&&") && !containsText(parentPtr, "||")){
-							token = strtok_r(cmdLine, "&&", &parentPtr);	
+							token = strtok_r(NULL, "&&", &parentPtr);	
 						}
 						else if(containsText(parentPtr, "||") && !containsText(parentPtr, "&&")){
 							nextConnector = true;
 						}
 						else if(containsText(parentPtr, "||") && containsText(parentPtr, "&&")){
-							token = strtok_r(cmdLine, "&&", &parentPtr);
+							token = strtok_r(NULL, "&&", &parentPtr);
 						}	
 						nextCmd = true;
 						if(!containsText(parentPtr, "||") && !containsText(parentPtr, "&&")){
 							nextCmd = false;
-							token = parentPtr;
+							token = strtok_r(NULL, "&&", &parentPtr);
+							cmdLine = token;
 						}
 					}
 				}
 				nextConnector = false;
 			}
 			
-			cout << "final token: " << token << endl;
+			if(finalCmd){
+				//cout << "final token: " << token << endl;
 
-								
+				char**cmdLinePart = parseSpace(cmdLine);
 
+				cmdLine = strtok(NULL, ";"); //parse ";"
 
-
-
-
-
-
-
-
-			char**cmdLinePart = parseSpace(cmdLine);
-
-			cmdLine = strtok(NULL, ";"); //parse ";"
-
-			if(cmdLine==NULL){
-				cmdLineDone = true;
-			}
-
-			if(isText(cmdLinePart[0], "exit")){
-				return 0;
-			}
-
-			//checking for quotes and parentheses
-			bool valid = true;
-			for(int i = 0; cmdLinePart[i]!='\0' && valid; i++){
-				if(containsText(cmdLinePart[i], "\"") || containsText(cmdLinePart[i], "(") || containsText(cmdLinePart[i], ")")){
-					cout << "Syntax error! Command contains parentheses and/or quotes.\n";
-					valid = false;
+				if(cmdLine==NULL){
+					cmdLineDone = true;
 				}
-			}
 
-			//process spawning
-			if(valid){
-				execCmd(cmdLinePart);
+				if(isText(cmdLinePart[0], "exit")){
+					return 0;
+				}
+
+				//checking for quotes and parentheses
+				bool valid = true;
+				for(int i = 0; cmdLinePart[i]!='\0' && valid; i++){
+					if(containsText(cmdLinePart[i], "\"") || containsText(cmdLinePart[i], "(") || containsText(cmdLinePart[i], ")")){
+						cout << "Syntax error! Command contains parentheses and/or quotes.\n";
+						valid = false;
+					}
+				}
+
+				//process spawning
+				if(valid){
+					execCmd(cmdLinePart);
+				}
 			}
 		}
 		//delete[] cmdLine;
