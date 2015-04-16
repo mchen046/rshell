@@ -1,5 +1,5 @@
 all:
-	g++ -Wall -Werror -ansi -pedantic main.cpp
+	g++ -std=c++11 -Wall -Werror -pedantic main.cpp
 
 rshell:
-	g++ -Wall -Werror -ansi -pedantic main.cpp
+	g++ -std=c++11 -Wall -Werror -pedantic main.cpp
