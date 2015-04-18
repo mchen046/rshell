@@ -108,7 +108,7 @@ bool isText(char* cmdText, string text){
 	return true;
 }
 
-bool containsText(char* cmdText, string text){
+bool hasText(char* cmdText, string text){
 	unsigned int count = 0;
 	int j = 0;
 	for(unsigned int i = 0; cmdText[i]!='\0'; i++){
@@ -127,11 +127,7 @@ bool containsText(char* cmdText, string text){
 	return false;
 }
 
-void printCmdLinePart(char**cmdLinePart, int cmdLinePartSize){ //buggy when printing
-	for(int i = 0; i<=cmdLinePartSize+1; i++){
-		cout << cmdLinePart[i] << endl;
-	}
-}
+
 
 int execCmd(char** cmdLinePart){ //process spawning
 	int pid = fork();
@@ -159,7 +155,63 @@ int execCmd(char** cmdLinePart){ //process spawning
 	return status;
 }
 
+void printcmd(vector<char*> cmd){
+	cout << "---------------\ncmd\n";
+	for(unsigned int i = 0; i<cmd.size(); i++){
+		cout << "cmd[" << i << "]: " << cmd[i] << endl;
+	}
+	cout << "---------------\n";
+}
 
+void parseDelim(vector<char*> &cmdC, char *cmdB, char const * delim, char *&ptr){
+	char *token;
+	token = strtok_r(cmdB, delim, &ptr);
+	cmdC.push_back(token);
+	while(hasText(ptr, delim)){
+		token = strtok_r(NULL, delim, &ptr);
+		cmdC.push_back(token);
+		cout << "ptr: " << ptr << endl;	
+	}
+	token = strtok_r(NULL, delim, &ptr);
+	cmdC.push_back(token);
+	//delete[] ptr;
+	//delete[] token;
+}
+
+int parseMaster(char* cmdB){
+	cout << "cmdB: " << cmdB << endl;
+	char *ptr;
+	vector <char*> cmdC;
+	if(hasText(cmdB,"&") || hasText(cmdB, "|") || hasText(cmdB, "\"") || hasText(cmdB, "(") || hasText(cmdB, ")")){
+		//invalid command
+	}
+	if(!hasText(cmdB, "&&") && !hasText(cmdB, "||")){
+		//execute
+	}
+	else if(hasText(cmdB, "&&") && !hasText(cmdB, "||")){
+		//parse && loop	
+		parseDelim(cmdC, cmdB, "&&", ptr);
+		//exec
+	}
+	else if(!hasText(cmdB, "&&") && hasText(cmdB, "||")){
+		//parse || loop
+		parseDelim(cmdC, cmdB, "||", ptr);	
+		//exec
+	}
+	else if(hasText(cmdB, "&&") && hasText(cmdB, "||")){
+		//parse both && and || loop
+		parseDelim(cmdC, cmdB, "||", ptr);
+		cout << "cmdC[0]: " << cmdC[0] << endl;
+		if(hasText(cmdC[0], "&&")){
+			cmdC.clear();
+			char *ptrA;
+			parseDelim(cmdC, cmdB, "&&", ptrA);
+		}
+		
+	}
+	printcmd(cmdC);
+	return 1;
+}
 int main(){
 	while(1){
 		string cmd;
@@ -167,23 +219,58 @@ int main(){
 		getline(cin, cmd);
 
 		//convert string to char[]
-		char *cmdArray = new char[cmd.size()];
+		char *cmdA = new char[cmd.size()];
 		for(int i=0; i<static_cast<int>(cmd.size()); i++){
-			cmdArray[i] = cmd.at(i);
+			cmdA[i] = cmd.at(i);
 		}
-		//cout << "cmdArray: " << cmdArray << endl;
 		
-		bool cmdLineDone = false;
-		char *cmdLine = strtok(cmdArray, ";"); //parsing ";"
-		while(!cmdLineDone){
+		char *cmdB = strtok(cmdA, ";"); //parsing ";"
+		bool cmdBDone = false;
+
+		while(!cmdBDone){
+			parseMaster(cmdB);	
+			cmdB = strtok(NULL, ";");
+			if(cmdB==NULL){
+				cmdBDone = true;
+			}
+		}
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 			//cout << "cmdLine: " << cmdLine << endl;
 
 			//parsing && or ||
-			char *parentPtr, *token;
+			/*char *parentPtr, *token;
 			char **cmdConnector;
 			bool nextCmd = true;
 			bool nextConnector = false;
-			bool finalCmd = true;
+			bool finalCmd = true;*/
 			//bool free = true;
 		
 			//setting initial token
@@ -200,7 +287,7 @@ int main(){
 
 
 
-			if(!containsText(cmdLine, "||") && !containsText(cmdLine, "&&")){
+			/*if(!containsText(cmdLine, "||") && !containsText(cmdLine, "&&")){
 				//cout << "nextCmd set to false\n";
 				nextCmd = false;
 				//free = false;
@@ -246,10 +333,10 @@ int main(){
 			while(nextCmd){
 				while(containsText(parentPtr, "||") && nextCmd && !nextConnector){
 					cout << "in || connector\n";
-					//cout << "token: " << token << endl;
+					cout << "token: " << token << endl;
 					token = strtok_r(NULL, "||", &parentPtr); //parse ||
-					//cout << "token after parsing ||: " << token << endl;
-					//cout << "parentPtr: " << parentPtr << endl;
+					cout << "token after parsing ||: " << token << endl;
+					cout << "parentPtr: " << parentPtr << endl;
 					cmdConnector = parseSpace(token); //parse space
 					if(execCmd(cmdConnector)==-1){ //if command fails
 						if(containsText(parentPtr,"&&") && !containsText(parentPtr, "||")){
@@ -275,11 +362,11 @@ int main(){
 				}
 				nextConnector = false;
 				while(containsText(parentPtr, "&&") && nextCmd && !nextConnector){
-					//cout << "in && connector\n";
-					//cout << "token: " << token << endl;
+					cout << "in && connector\n";
+					cout << "token: " << token << endl;
 					token = strtok_r(NULL, "&&", &parentPtr); //parse &&
-					//cout << "token after parsing &&: " << token << endl;
-					//cout << "parentPtr: " << parentPtr << endl;
+					cout << "token after parsing &&: " << token << endl;
+					cout << "parentPtr: " << parentPtr << endl;
 					cmdConnector = parseSpace(token); //parse space
 					if(execCmd(cmdConnector)==-1){ //if command fails
 						nextCmd = false;
@@ -306,16 +393,17 @@ int main(){
 				}
 				nextConnector = false;
 			}
-			/*if(free){
-
+			if(free){
+				cout << "deleting cmdConnector\n";
 				int size = sizeOfPart(token);
 				cout << "size: " << size << endl;
 				for(int i = 0; i < size; i++){
 					cout << "i: " << i << endl;
+					cout << "cmdConnector[i]: " << cmdConnector[i] << endl;
 					delete[] cmdConnector[i];
 				}
 				delete[] cmdConnector;
-			}*/
+			}
 
 			if(finalCmd){
 				char**cmdLinePart = parseSpace(cmdLine);
@@ -344,19 +432,21 @@ int main(){
 				if(valid){
 					execCmd(cmdLinePart);
 				}
-				/*cout << "size: " << size << endl;
+			
+				cout << "deleting cmdLinePart\n";
+				cout << "size: " << size << endl;
 				for(int i = 0; i < size; i++){
 					cout << "i: " << i << endl;
+					cout << "cmdLinePart[i]: " << cmdLinePart[i] << endl;
 					delete[] cmdLinePart[i];
 				}
-				delete[] cmdLinePart;*/
+				cout << "helloooo" << endl;
+				delete[] cmdLinePart;
 			}
 			//delete[] parentPtr;
 			//delete[] token;
 		}
 		//delete[] cmdLine;
-		//delete[] cmdArray;
-	}
-	cout << "reached end of program\n";
-	return 0;
-}
+		//delete[] cmdArray;*/
+	
+	
