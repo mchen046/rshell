@@ -18,6 +18,7 @@ fix boolean operators? partially working
 execCmd is not able to tell if a command fails or not
 	success variable assignment is lost as soon as child exits
 	cannot tell if success or not while in parent
+	rmdir test: execvp succeeds, but command itself fails
 compact and optimize!!!
 fix memory leaks
 */
@@ -33,12 +34,14 @@ parentheses and quotes
 */
 #include <iostream>
 #include <unistd.h>
-#include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/types.h>
+#include <wait.h>
 #include <string.h>
 #include <string>
 #include <vector>
 #include <cstdlib>
+#include <stdlib.h>
 #include <stdio.h>
 #include <boost/tokenizer.hpp>
 #include <boost/token_iterator.hpp>
@@ -129,32 +132,28 @@ void printCmdLinePart(char**cmdLinePart, int cmdLinePartSize){ //buggy when prin
 
 int execCmd(char** cmdLinePart){ //process spawning
 	int pid = fork();
-	int success = -1;
-	//cout << "pid: " << pid << endl;
+	int status = 0;
 	if(pid == -1){ //error
 		perror("fork() error");
-		cout << "exiting pid error msg\n";
-		exit(1);
+		_exit(2);
 	}
 	else if(pid == 0){ //child process
-		//cout << "in child process\n";
 		if(execvp(cmdLinePart[0], cmdLinePart) == -1){
 			perror("error in execvp");
+			_exit(2);
 		}
-		cout << "exiting child process\n";
-		exit(1);
 	}
 	else if(pid > 0){ //parent process
-		//cout << "in parent process\n";
-		if(wait(0) == -1){
+		if(wait(&status)==-1){		
 			perror("error in wait()");
-		}
-		else{
-			success = 1;
+			_exit(2);
 		}
 	}
-	cout << "success: " << success << endl;
-	return success;
+	cout << "status: " << status << endl;
+	if(status!=0){ //command fails
+		return -1;
+	}
+	return status;
 }
 
 
@@ -169,12 +168,12 @@ int main(){
 		for(int i=0; i<static_cast<int>(cmd.size()); i++){
 			cmdArray[i] = cmd.at(i);
 		}
-		cout << "cmdArray: " << cmdArray << endl;
+		//cout << "cmdArray: " << cmdArray << endl;
 		
 		bool cmdLineDone = false;
 		char *cmdLine = strtok(cmdArray, ";"); //parsing ";"
 		while(!cmdLineDone){
-			cout << "cmdLine: " << cmdLine << endl;
+			//cout << "cmdLine: " << cmdLine << endl;
 
 			//parsing && or ||
 			char *parentPtr, *token;
