@@ -127,8 +127,6 @@ bool hasText(char* cmdText, string text){
 	return false;
 }
 
-
-
 int execCmd(char** cmdD){ //process spawning
 	int pid = fork();
 	int status = 0;
@@ -166,8 +164,10 @@ void printcmd(vector<char*> cmd){
 }
 
 void parseDelim(vector<char*> &cmdC, char *cmdB, char const * delim, char *&ptr){
+	cout << "cmdC.size(): " << cmdC.size() << endl;
 	char *token;
 	token = strtok_r(cmdB, delim, &ptr);
+	cout << "token: " << token << endl;
 	cmdC.push_back(token);
 	while(hasText(ptr, delim)){
 		token = strtok_r(NULL, delim, &ptr);
@@ -176,6 +176,7 @@ void parseDelim(vector<char*> &cmdC, char *cmdB, char const * delim, char *&ptr)
 	}
 	token = strtok_r(NULL, delim, &ptr);
 	cmdC.push_back(token);
+	//printcmd(cmdC);
 	//delete[] ptr;
 	//delete[] token;
 }
@@ -198,12 +199,18 @@ void cOr(vector<char*> &cmdC, char *cmdB, char *&ptr){
 	//parse || loop	
 	parseDelim(cmdC, cmdB, "||", ptr);
 	//exec
-	//printcmd(cmdC);
 	bool boolDone = false;
-	//cout << "cmdC.size(): " << cmdC.size() << endl;
+	cout << "cmdC.size(): " << cmdC.size() << endl;
 	for(unsigned int i = 0; i<cmdC.size() && !boolDone; i++){
-		if(!execCmd(parseSpace(cmdC[i]))){ //command succeeds
+		//cout << "cmdC[" << i << "]: " << cmdC[i] << endl;
+		if(cmdC[i]==NULL){
 			boolDone = true;
+		}
+		if(!boolDone && !execCmd(parseSpace(cmdC[i]))){ //command succeeds
+			boolDone = true;
+		}
+		if(boolDone){
+			cout << "boolDone is set!\n";
 		}
 	}
 }
@@ -239,9 +246,9 @@ int parseMaster(char* cmdB){
 			cmdC.clear();
 			char *ptrA, *ptrB;
 			parseDelim(cmdC, cmdB, "&&", ptrA);
+			//printcmd(cmdC);
 			cOr(cmdC, cmdB, ptrB);
 		}
-
 	}
 	return 1;
 }
@@ -270,5 +277,6 @@ int main(){
 				cmdBDone = true;
 			}
 		}
+		//delete[] cmdA;
 	}
 }
