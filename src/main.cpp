@@ -63,6 +63,7 @@ int sizeOfPart(char *cmdLine){
 
 char** parseSpace(char *cmdLine){
 	//parsing " "
+	
 	string str = static_cast<string>(cmdLine);
 	char_separator<char> delim(" ");
 	tokenizer< char_separator<char> > mytok(str, delim);
@@ -80,18 +81,17 @@ char** parseSpace(char *cmdLine){
 	for(tokenizer<char_separator<char> >::iterator it = mytok.begin(); it!=mytok.end(); it++){
 		string cmdString = static_cast<string>(*it);
 		char *token = new char[cmdString.size()];
-		for(unsigned int j = 0; j!=cmdString.size(); j++){
+		for(unsigned int j = 0; j<cmdString.size(); j++){
 			token[j] = cmdString[j];
 		}
-
 		cmdLinePart[i] = token;
-		i++;
-
 		tokenizer<char_separator<char> >::iterator itA = it;
 		if(++itA==mytok.end()){
 			//cout << "adding NULL to end of cmdLinePart\n";
 			cmdLinePart[i+1] = NULL;
 		}
+		i++;
+		//delete[] token;
 	}
 	return cmdLinePart;
 	//end creating cmdLinePart
@@ -129,15 +129,16 @@ bool hasText(char* cmdText, string text){
 
 
 
-int execCmd(char** cmdLinePart){ //process spawning
+int execCmd(char** cmdD){ //process spawning
 	int pid = fork();
 	int status = 0;
+	//cout << "cmdD[0]: " << cmdD[0] << endl;
 	if(pid == -1){ //error
 		perror("fork() error");
 		_exit(2);
 	}
 	else if(pid == 0){ //child process
-		if(execvp(cmdLinePart[0], cmdLinePart) == -1){
+		if(execvp(cmdD[0], cmdD) == -1){
 			perror("error in execvp"); //status becomes 256/512
 			_exit(2);
 		}
@@ -150,9 +151,10 @@ int execCmd(char** cmdLinePart){ //process spawning
 	}
 	//cout << "status: " << status << endl;
 	if(status!=0){ //command fails 
+		//cout << "command fails!\n";
 		return -1;
 	}
-	return status;
+	return status; //status defaults to 0 if successful
 }
 
 void printcmd(vector<char*> cmd){
@@ -179,29 +181,47 @@ void parseDelim(vector<char*> &cmdC, char *cmdB, char const * delim, char *&ptr)
 }
 
 int parseMaster(char* cmdB){
-	cout << "cmdB: " << cmdB << endl;
+	//cout << "cmdB: " << cmdB << endl;
 	char *ptr;
 	vector <char*> cmdC;
-	if(hasText(cmdB,"&") || hasText(cmdB, "|") || hasText(cmdB, "\"") || hasText(cmdB, "(") || hasText(cmdB, ")")){
+	if((hasText(cmdB, "|") || hasText(cmdB, "\"") || hasText(cmdB, "(") || hasText(cmdB, ")")) && !hasText(cmdB, "&&") && !hasText(cmdB, "||")){
 		//invalid command
+		cout << "rshell: " << cmdB  <<": command not found\n";
 	}
-	if(!hasText(cmdB, "&&") && !hasText(cmdB, "||")){
+	else if(!hasText(cmdB, "&&") && !hasText(cmdB, "||")){
 		//execute
+		execCmd(parseSpace(cmdB));
 	}
 	else if(hasText(cmdB, "&&") && !hasText(cmdB, "||")){
 		//parse && loop	
 		parseDelim(cmdC, cmdB, "&&", ptr);
 		//exec
+		printcmd(cmdC);
+		bool boolDone = false;
+		//cout << "cmdC.size(): " << cmdC.size() << endl;
+		for(unsigned int i = 0; i<cmdC.size() && !boolDone; i++){
+			if(execCmd(parseSpace(cmdC[i]))==-1){ //command fails
+				boolDone = true;
+			}
+		}
 	}
 	else if(!hasText(cmdB, "&&") && hasText(cmdB, "||")){
-		//parse || loop
-		parseDelim(cmdC, cmdB, "||", ptr);	
+		//parse || loop	
+		parseDelim(cmdC, cmdB, "||", ptr);
 		//exec
+		printcmd(cmdC);
+		bool boolDone = false;
+		//cout << "cmdC.size(): " << cmdC.size() << endl;
+		for(unsigned int i = 0; i<cmdC.size() && !boolDone; i++){
+			if(!execCmd(parseSpace(cmdC[i]))){ //command succeeds
+				boolDone = true;
+			}
+		}
 	}
 	else if(hasText(cmdB, "&&") && hasText(cmdB, "||")){
 		//parse both && and || loop
 		parseDelim(cmdC, cmdB, "||", ptr);
-		cout << "cmdC[0]: " << cmdC[0] << endl;
+		//cout << "cmdC[0]: " << cmdC[0] << endl;
 		if(hasText(cmdC[0], "&&")){
 			cmdC.clear();
 			char *ptrA;
@@ -209,7 +229,6 @@ int parseMaster(char* cmdB){
 		}
 		
 	}
-	printcmd(cmdC);
 	return 1;
 }
 int main(){
@@ -228,9 +247,12 @@ int main(){
 		bool cmdBDone = false;
 
 		while(!cmdBDone){
+			//cout << "cmdB: " << cmdB << endl;
 			parseMaster(cmdB);	
+			//cout << "parsed and executed!" << endl;
 			cmdB = strtok(NULL, ";");
 			if(cmdB==NULL){
+				//cout << "no more semicolons\n";
 				cmdBDone = true;
 			}
 		}
