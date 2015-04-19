@@ -8,16 +8,6 @@ Worklist:
 bug when running: ls -a; echo hello; mkdir test;
 	the command exits when mkdir test finishes.
 	concatenates an extra " e" after original command
-fix: have to have a NULL at the end of the char* command
-currently trying to implement connectors || &&
-
-fix boolean operators? partially working
-	compact and optimize
-execCmd is not able to tell if a command fails or not
-	success variable assignment is lost as soon as child exits
-	cannot tell if success or not while in parent
-	rmdir test: execvp succeeds, but command itself fails
-compact and optimize!!!
 fix memory leaks
 */
 /*
@@ -118,25 +108,28 @@ char** parseSpace(char *cmd){
 	int i = 0;
 	for(tokenizer<char_separator<char> >::iterator it = mytok.begin(); it!=mytok.end(); it++){
 		string cmdString = static_cast<string>(*it);
-		char *token = new char[cmdString.size()];
+		char *token = new char[cmdString.size()+1];
 		for(unsigned int j = 0; j<cmdString.size(); j++){
 			token[j] = cmdString[j];
+			if(j+1==cmdString.size()){
+				token[j+1] = '\0';
+			}
 		}
 		cmdExec[i] = token;
-		//delete[] token;
 		tokenizer<char_separator<char> >::iterator itA = it;
 		if(++itA==mytok.end()){
 			cmdExec[i+1] = NULL;
 		}
 		i++;	
+		//deallocate token?
 	}
-	if(isText(cmdExec[0], "exit")){ //exit executable
+	if(isText(cmdExec[0], "exit") || isText(cmdExec[0], "exit;")){ //exit executable
 		exitSeen = true;
 		if(cmdExec[1]!=NULL && !isNumericOnly(static_cast<string>(cmdExec[1]))){
 			cout << "rshell: exit: " << cmdExec[1] << ": numeric argument required" << endl;
 			exit(0); //exit
 		}
-		else if(cmdExec[2]!=NULL){
+		else if(cmdExec[1]!=NULL && cmdExec[2]!=NULL){
 			cout << "rshell: exit: too many arguments" << endl;
 		}
 		else{
@@ -152,6 +145,7 @@ int execCmd(char** cmdD){ //process spawning
 	if(exitSeen){
 		return -1;
 	}
+	exitSeen = false;
 	int pid = fork();
 	int status = 0;
 	//cout << "cmdD[0]: " << cmdD[0] << endl;
@@ -160,6 +154,7 @@ int execCmd(char** cmdD){ //process spawning
 		_exit(2);
 	}
 	else if(pid == 0){ //child process
+		cout << "cmdD[0]: " << cmdD[0] << endl;
 		if(execvp(cmdD[0], cmdD) == -1){
 			perror("error in execvp"); //status becomes 256/512
 			_exit(2);
@@ -259,7 +254,7 @@ void parseMaster(char* cmdB){
 		else{ //vector of || commands separated by &&
 			succeed = true;
 			cmdC.clear();
-			cmdB = cmdBX; //restore cmdB
+			cmdB = cmdBX; //restore cmdB	
 			parseDelim(cmdC, cmdB, "&&", &ptr);
 			//printcmd(cmdC);
 			for(unsigned int i = 0; i<cmdC.size() && succeed; i++){
@@ -273,6 +268,7 @@ void parseMaster(char* cmdB){
 				}
 				cmdD.clear();
 			}
+			delete[] cmdBX;
 		}
 	}
 }
@@ -283,22 +279,27 @@ int main(){
 		getline(cin, cmd);
 
 		//convert string to char*
-		char *cmdA = new char[cmd.size()];
-		for(int i=0; i<static_cast<int>(cmd.size()); i++){
+		char *cmdA = new char[cmd.size()+1];
+		for(int i = 0; i<static_cast<int>(cmd.size()); i++){
 			cmdA[i] = cmd.at(i);
+			if(i+1==static_cast<int>(cmd.size())){
+				cmdA[i+1] = '\0'; //null terminating
+			}
 		}
 
 		char *cmdB = strtok(cmdA, ";"); //parsing ";"
 
 		bool cmdBDone = false;
 		while(!cmdBDone){
+			cout << "cmdB: " << cmdB << endl;
 			parseMaster(cmdB);	
 			cmdB = strtok(NULL, ";");
 			if(cmdB==NULL){
 				cmdBDone = true;
 			}
 		}
-		//delete[] cmdA;
+		delete[] cmdA;
+		delete[] cmdB;
 	}
 	return 0;
 }
