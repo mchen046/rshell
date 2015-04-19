@@ -47,6 +47,8 @@ parentheses and quotes
 using namespace std;
 using namespace boost;
 
+bool exitSeen = false;
+
 void printcmd(vector<char*> cmd){ //debugging cmdC
 	cout << "---------------\ncmd\n";
 	for(unsigned int i = 0; i<cmd.size(); i++){
@@ -64,6 +66,40 @@ int sizeOfPart(char *cmdLine){ //finds size to allocate for execution
 		size++;
 	}
 	return size;
+}
+
+bool hasText(char* cmdText, string text){
+	unsigned int count = 0;
+	int j = 0;
+	for(unsigned int i = 0; cmdText[i]!='\0'; i++){
+		if(cmdText[i]!=text[j]){
+			count = 0;
+			j = 0;
+		}
+		if(cmdText[i]==text[j]){
+			count++;
+			j++;
+		}
+		if(count == text.size()){
+			return true;
+		}
+	}
+	return false;
+}
+
+bool isText(char* cmdText, string text){
+	if(!(cmdText[text.size()-1]==text[text.size()-1] && cmdText[text.size()]=='\0' && text[text.size()]=='\0')){
+		return false;
+	}
+	for(unsigned int i = 0; cmdText[i]!='\0' && i<text.size(); i++){
+		if(cmdText[i]!=text[i])
+			return false;
+	}
+	return true;
+}
+
+bool isNumericOnly(const string &str){
+	return all_of(str.begin(), str.end(), ::isdigit);
 }
 
 char** parseSpace(char *cmd){
@@ -94,42 +130,28 @@ char** parseSpace(char *cmd){
 		}
 		i++;	
 	}
+	if(isText(cmdExec[0], "exit")){ //exit executable
+		exitSeen = true;
+		if(cmdExec[1]!=NULL && !isNumericOnly(static_cast<string>(cmdExec[1]))){
+			cout << "rshell: exit: " << cmdExec[1] << ": numeric argument required" << endl;
+			exit(0); //exit
+		}
+		else if(cmdExec[2]!=NULL){
+			cout << "rshell: exit: too many arguments" << endl;
+		}
+		else{
+			exit(0); //exit
+		}
+	}
 	return cmdExec;
 	//end creating cmdExec
 	//deallocate cmdExec?
 }
 
-bool isText(char* cmdText, string text){
-	if(!(cmdText[text.size()-1]==text[text.size()-1] && cmdText[text.size()]=='\0' && text[text.size()]=='\0')){
-		return false;
-	}
-	for(unsigned int i = 0; cmdText[i]!='\0' && i<text.size(); i++){
-		if(cmdText[i]!=text[i])
-			return false;
-	}
-	return true;
-}
-
-bool hasText(char* cmdText, string text){
-	unsigned int count = 0;
-	int j = 0;
-	for(unsigned int i = 0; cmdText[i]!='\0'; i++){
-		if(cmdText[i]!=text[j]){
-			count = 0;
-			j = 0;
-		}
-		if(cmdText[i]==text[j]){
-			count++;
-			j++;
-		}
-		if(count == text.size()){
-			return true;
-		}
-	}
-	return false;
-}
-
 int execCmd(char** cmdD){ //process spawning
+	if(exitSeen){
+		return -1;
+	}
 	int pid = fork();
 	int status = 0;
 	//cout << "cmdD[0]: " << cmdD[0] << endl;
@@ -203,7 +225,6 @@ void parseMaster(char* cmdB){
 	}
 	else if(!hasText(cmdB, "&&") && !hasText(cmdB, "||")){
 		//execute
-
 		execCmd(parseSpace(cmdB));
 	}
 	else if(hasText(cmdB, "&&") && !hasText(cmdB, "||")){ //only has &&
@@ -279,4 +300,5 @@ int main(){
 		}
 		//delete[] cmdA;
 	}
+	return 0;
 }
