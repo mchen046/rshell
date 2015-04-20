@@ -74,3 +74,29 @@ Running `rshell` within rshell spawns a new process that runs within the origina
 
 `cd` will be implemented in the future.
 
+**8. execution of && and || connectors**
+
+rshell executes commands with both && and || connectors a little differently than bash. rshell takes the command
+
+`echo hello && echo world && sdsdsd || echo my || sdsdsd && echo michael` 
+
+and logically separates it into 
+
+`(echo hello && echo world && sdsdsd) || (echo my) || (sdsdsd && echo michael)`
+
+without actually coding in the parentheses. rshell logically divides the command into a list of commands that contain only &&, which are then separated by ||, and vice versa. To clarify, here is another example:
+
+`echo hello || echo world || sdsdsd && echo my && sdsdsd || echo michael` 
+
+becomes
+
+`(echo hello) || (echo world) || (sdsdsd && echo my && sdsdsd) || (echo michael)`
+
+Commands still follow normal connector logic:
+- If a command is followed by `||`, then the next command is executed only if the first one failed.
+- If a command is followed by `&&`, then the next command is executed only if the first one succeeded.
+- If a command is followed by `;`, then the next command is always executed.
+
+
+
+
