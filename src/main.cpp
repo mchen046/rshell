@@ -154,7 +154,7 @@ int execCmd(char** cmdD){ //process spawning
 		_exit(2);
 	}
 	else if(pid == 0){ //child process
-		cout << "cmdD[0]: " << cmdD[0] << endl;
+		//cout << "cmdD[0]: " << cmdD[0] << endl;
 		if(execvp(cmdD[0], cmdD) == -1){
 			perror("error in execvp"); //status becomes 256/512
 			_exit(2);
@@ -211,12 +211,16 @@ int cOR(vector<char*> &cmdC, char *cmdB, char **ptr){ //parse and execute || com
 }
 
 void parseMaster(char* cmdB){
-	//cout << "cmdB: " << cmdB << endl;
 	char *ptr;
 	vector <char*> cmdC;
-	if((hasText(cmdB, "|") || hasText(cmdB, "\"") || hasText(cmdB, "(") || hasText(cmdB, ")")) && !hasText(cmdB, "&&") && !hasText(cmdB, "||")){
-		//invalid command
-		cout << "rshell: " << cmdB  <<": command not found\n";
+	if((hasText(cmdB, "\"") || hasText(cmdB, "(") || hasText(cmdB, ")")) && !hasText(cmdB, "&&") && !hasText(cmdB, "||")){
+		if(hasText(cmdB, "&") || hasText(cmdB, "|")){
+			execCmd(parseSpace(cmdB));
+		}
+		else{
+			//invalid command
+			cout << "rshell: " << cmdB  <<": command not found\n";
+		}
 	}
 	else if(!hasText(cmdB, "&&") && !hasText(cmdB, "||")){
 		//execute
@@ -274,32 +278,47 @@ void parseMaster(char* cmdB){
 }
 int main(){
 	while(1){
-		string cmd;
-		cout << "$ ";
+		string cmd, cmd2;
+
+		char host[64];	//prompt
+		gethostname(host,64);
+		cout << getlogin() << '@' << host << "$ ";
 		getline(cin, cmd);
-
-		//convert string to char*
-		char *cmdA = new char[cmd.size()+1];
-		for(int i = 0; i<static_cast<int>(cmd.size()); i++){
-			cmdA[i] = cmd.at(i);
-			if(i+1==static_cast<int>(cmd.size())){
-				cmdA[i+1] = '\0'; //null terminating
+		
+		//filter comments
+		for(unsigned int i = 0; i<cmd.size(); i++){
+			if(cmd.at(i)!='#'){
+				cmd2.push_back(cmd.at(i));
+			}
+			else{
+				i=cmd.size();
 			}
 		}
-
-		char *cmdB = strtok(cmdA, ";"); //parsing ";"
-
-		bool cmdBDone = false;
-		while(!cmdBDone){
-			cout << "cmdB: " << cmdB << endl;
-			parseMaster(cmdB);	
-			cmdB = strtok(NULL, ";");
-			if(cmdB==NULL){
-				cmdBDone = true;
+		
+		if(cmd2!=""){ //if command is not empty
+			//convert string to char*
+			char *cmdA = new char[cmd2.size()+1];
+			for(int i = 0; i<static_cast<int>(cmd2.size()); i++){
+				cmdA[i] = cmd2.at(i);
+				if(i+1==static_cast<int>(cmd.size())){
+					cmdA[i+1] = '\0'; //null terminating
+				}
 			}
+
+			char *cmdB = strtok(cmdA, ";"); //parsing ";"
+
+			bool cmdBDone = false;
+			while(!cmdBDone){
+				//cout << "cmdB: " << cmdB << endl;
+				parseMaster(cmdB);	
+				cmdB = strtok(NULL, ";");
+				if(cmdB==NULL){
+					cmdBDone = true;
+				}
+			}
+			delete[] cmdA;
+			delete[] cmdB;
 		}
-		delete[] cmdA;
-		delete[] cmdB;
 	}
 	return 0;
 }
