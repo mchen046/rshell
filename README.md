@@ -1,5 +1,5 @@
 # rshell
-rshell is a basic command shell using the syscalls fork, execvp, and wait.
+rshell is a basic command shell that uses the syscalls fork, execvp, and wait. Please see the *Bugs/Limitations/Issues* section describing unwanted behavior.
 - prompts the user with `login@hostname$ ` 
 - handles a combination of `;`, `&&`, and `||` connectors
 
