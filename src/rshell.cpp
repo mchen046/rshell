@@ -195,22 +195,6 @@ int cOR(vector<char*> &cmdC, char *cmdB, char **ptr){ //parse and execute || com
 }
 
 bool checkConnector(string cmd, string &stringToken){
-	//&& && 
-	//|| ||
-	//&&& or &&&&&&&&&&&&&
-	//||| or |||||||||||||
-	//&& &
-	//|| |
-	//&&||
-	//||&&
-	//&|
-	//|&
-	//& |
-	//| &
-	//&& |
-	//|| &
-	//& &
-	//| |
 	bool valid = true;
 	bool space = false;
 	for(unsigned int i = 0; i<cmd.size() && valid; i++){
@@ -386,13 +370,14 @@ int main(){
 				i=cmd.size();
 			}
 		}
-
+	
+		/*
 		//check for invalid instances of && and ||
 		if(!checkConnector(cmd2, stringToken)){
 			cout << "rshell: syntax error near unexpected token \'" << stringToken << "\'" << endl;
 			cmd2 = "";
 		}
-		
+		*/	
 		if(cmd2!=""){ //if command is not empty
 			//convert string to char*
 			char *cmdA = new char[cmd2.size()+1];
