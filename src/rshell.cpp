@@ -1,24 +1,8 @@
-/*mchen046
+/*
+Michael Chen mchen046@ucr.edu
 SID: 861108671
 CS100 Spring 2015: hw0-rshell
-https://www.github.com/mchen046/rshell/src/main.cpp
-*/
-/*
-Worklist:
-bug when running: ls -a; echo hello; mkdir test;
-	the command exits when mkdir test finishes.
-	concatenates an extra " e" after original command
-fix memory leaks
-*/
-/*
-Fixed:
-problem when running ls -a multiple times
-	ls -a breaks on the second execution "error in execvp: Bad address
-*/
-/*
-README:
-ex command?
-parentheses and quotes
+https://www.github.com/mchen046/rshell/src/rshell.cpp
 */
 #include <iostream>
 #include <unistd.h>
@@ -210,6 +194,114 @@ int cOR(vector<char*> &cmdC, char *cmdB, char **ptr){ //parse and execute || com
 	return success;
 }
 
+bool checkConnector(string cmd, string &stringToken){
+	//&& && 
+	//|| ||
+	//&&& or &&&&&&&&&&&&&
+	//||| or |||||||||||||
+	//&& &
+	//|| |
+	//&&||
+	//||&&
+	//&|
+	//|&
+	//& |
+	//| &
+	//&& |
+	//|| &
+	//& &
+	//| |
+	bool valid = true;
+	bool space = false;
+	for(unsigned int i = 0; i<cmd.size() && valid; i++){
+		if(cmd.at(i)=='&'){
+			for(unsigned int j = i+1; j<cmd.size() && valid; j++){
+				if(cmd.at(j)=='|'){
+					stringToken = "|";
+					valid = false;
+				}
+				else if(cmd.at(j)=='&'){
+					if(space){
+						stringToken = "&";
+						if(j+1<cmd.size() && cmd.at(j+1)=='&'){
+							stringToken = "&&";
+						}
+						valid = false;
+					}
+					for(unsigned int k = j+1; k<cmd.size() && valid; k++){
+						if(cmd.at(k)=='&'){
+							stringToken = "&";
+							if(space){
+								stringToken = "&";
+								if(k+1<cmd.size() && cmd.at(k+1)=='&'){
+									stringToken = "&&";
+								}
+							}
+							valid = false;
+						}
+						else if(cmd.at(k)=='|'){
+							stringToken = "||";
+							if(space){
+								stringToken = "|";
+							}
+							valid = false;
+						}
+						else if(cmd.at(k)==' '){
+							space = true;
+						}
+					}
+				}
+				else if(cmd.at(j)==' '){
+					space = true;
+				}
+			}
+		}
+		else if(cmd.at(i)=='|'){
+			for(unsigned int j = i+1; j<cmd.size() && valid; j++){
+				if(cmd.at(j)=='&'){
+					stringToken = "&";
+					valid = false;
+				}
+				else if(cmd.at(j)=='|'){
+					if(space){
+						stringToken = "|";
+						if(j+1<cmd.size() && cmd.at(j+1)=='|'){
+							stringToken = "||";
+						}
+						valid = false;
+					}
+					for(unsigned int k = j+1; k<cmd.size() && valid; k++){
+						if(cmd.at(k)=='|'){
+							stringToken = "|";
+							if(space){
+								stringToken = "|";
+								if(k+1<cmd.size() && cmd.at(k+1)=='|'){
+									stringToken = "||";
+								}
+							}
+							valid = false;
+						}
+						else if(cmd.at(k)=='&'){
+							stringToken = "&&";
+							if(space){
+								stringToken = "&";
+							}
+							valid = false;
+						}
+						else if(cmd.at(k)==' '){
+							space = true;
+						}
+					}
+				}
+				else if(cmd.at(j)==' '){
+					space = true;
+				}
+			}
+		}
+	}
+	return valid;
+}
+
 void parseMaster(char* cmdB){
 	char *ptr;
 	vector <char*> cmdC;
@@ -278,7 +370,7 @@ void parseMaster(char* cmdB){
 }
 int main(){
 	while(1){
-		string cmd, cmd2;
+		string cmd, cmd2, stringToken;
 
 		char host[64];	//prompt
 		gethostname(host,64);
@@ -293,6 +385,12 @@ int main(){
 			else{
 				i=cmd.size();
 			}
+		}
+
+		//check for invalid instances of && and ||
+		if(!checkConnector(cmd2, stringToken)){
+			cout << "rshell: syntax error near unexpected token \'" << stringToken << "\'" << endl;
+			cmd2 = "";
 		}
 		
 		if(cmd2!=""){ //if command is not empty
