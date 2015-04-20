@@ -1,7 +1,7 @@
 # rshell
 rshell is a basic command shell using the syscalls fork, execvp, and wait.
 ### Installation
-To install rshell, run these commands:
+To install and execute rshell, run these commands in your favourite bash shell:
 ```
 $ git clone https://github.com/mchen046/rshell.git
 $ cd rshell
