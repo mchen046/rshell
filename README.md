@@ -2,6 +2,7 @@
 rshell is a basic command shell using the syscalls fork, execvp, and wait.
 - prompts the user with `login@hostname$ ` 
 - handles a combination of `;`, `&&`, and `||` connectors
+
 ### Installation
 To install and execute rshell, run these commands in your favourite bash shell:
 ```
