@@ -14,7 +14,7 @@ To install rshell, run these commands:
 
 rshell prints `hello & echo world`
 
-Bash prints 
+bash prints 
 
 	[1] 29338
 	world
@@ -29,7 +29,7 @@ See [documentation](http://bashitout.com/2013/05/18/Ampersands-on-the-command-li
 
 rshell prints `hello | echo world`
 
-Bash prints `world`
+bash prints `world`
 
 **3. `ctrl-z` and `fg`**
 
@@ -37,8 +37,29 @@ Pressing `ctrl-z` to put rshell in the background and pressing `fg` to return rs
 
 **4. multiple rshell processes**
 
-Running `rshell` within rshell spawns a new process that runs within the original rshell. Multiple entries of `exit` are required all processes.
+Running `rshell` within rshell spawns a new process that runs within the original rshell. Multiple entries of `exit` are required to end all instances of the rshell process.
 
 **5. does not support output redirection**
 
-`echo > filename`
+`$ echo hello world > filename`
+ 
+rshell prints `hello world > filename`
+
+bash redirects the output content of `echo` to a file `filename`
+
+**6. improper && and || connector entries**
+
+`ls |& echo hello |& echo world`
+
+rshell prints `rshell: syntax error near unexpected token '&'`
+
+bash executes the rightmost command, in this case `echo world`
+
+`ls &&&&&&&`
+
+rshell prints `rshell: syntax error near unexpected token '&'`
+
+bash prints `bash: syntax error near unexpected token '&&'`
+
+Note the discrepancy between the unexpected tokens '&' and '&&'
+
