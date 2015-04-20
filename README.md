@@ -17,8 +17,11 @@ To install rshell, run these commands:
 - bash prints 
 
 	[1] 29338
+
 	world
+
 	hello
+
 	[1]+ Done					echo hello
 
 See [documentation](http://bashitout.com/2013/05/18/Ampersands-on-the-command-line.html).
