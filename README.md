@@ -1,5 +1,7 @@
 # rshell
 rshell is a basic command shell using the syscalls fork, execvp, and wait.
+- prompts the user with `login@hostname$ ` 
+- handles a combination of `;`, `&&`, and `||` connectors
 ### Installation
 To install and execute rshell, run these commands in your favourite bash shell:
 ```
@@ -33,15 +35,7 @@ See [documentation](http://bashitout.com/2013/05/18/Ampersands-on-the-command-li
 
 - bash prints `world`
 
-**3. `ctrl-z` and `fg`**
-
-Pressing `ctrl-z` to put rshell in the background and pressing `fg` to return rshell to the foreground prevents rshell from outputting an initial prompt `$`.
-
-**4. multiple rshell processes**
-
-Running `rshell` within rshell spawns a new process that runs within the original rshell. Multiple entries of `exit` are required to end all instances of the rshell process.
-
-**5. does not support output redirection**
+**3. does not support output redirection**
 
 `$ echo hello world > filename`
  
@@ -49,7 +43,9 @@ Running `rshell` within rshell spawns a new process that runs within the origina
 
 - bash redirects the output content of `echo` to a file `filename`
 
-**6. improper && and || connector entries**
+Output redirection will be implemented in the future.
+
+**4. improper && and || connector entries**
 
 `ls |& echo hello |& echo world`
 
@@ -64,4 +60,16 @@ Running `rshell` within rshell spawns a new process that runs within the origina
 - bash prints `bash: syntax error near unexpected token '&&'`
 
 - Note the discrepancy between the unexpected tokens '&' and '&&'
+
+**5. `ctrl-z` and `fg`**
+
+Pressing `ctrl-z` to put rshell in the background and pressing `fg` to return rshell to the foreground prevents rshell from outputting an initial prompt `$`.
+
+**6. multiple rshell processes**
+
+Running `rshell` within rshell spawns a new process that runs within the original rshell. Multiple entries of `exit` are required to end all instances of the rshell process.
+
+**7. does not support the bash command `cd`**
+
+`cd` will be implemented in the future.
 
