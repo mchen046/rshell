@@ -1,0 +1,147 @@
+Script started on Mon 20 Apr 2015 12:35:01 AM PDT
+~
+mchen046@hammer $ cs100
+[0;91m
+===============================================================================
+|                                                                             |
+| You have enabled settings specific for cs100.  Everything you do is being   |
+| recorded to measure your progress in the class.                             |
+|                                                                             |
+| Important commands for the class:                                           |
+|   * calcgrade.sh          displays a detailed breakdown of your grade       |
+|   * typespeed             practice typing unix commands                     |
+|                                                                             |
+| Important commands for general C++ programming:                             |
+|   * make                  don't call g++ manually; let make do the work!    |
+|   * gdb                   the GNU debugger                                  |
+|   * valgrind              get rid of your memory leaks                      |
+|   * cppcheck              static analysis tool                              |
+|   * man                   find help about any syscall / terminal command    |
+|                                                                             |
+===============================================================================
+[0m
+[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~[0;95m [0;36m$[0m cd CS100/rshell
+[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~/CS100/rshell[0;95m (exec) [0;36m$[0m make
+if [ ! -d bin ]; then mkdir bin; fi
+g++ -std=c++11 -Wall -Werror -pedantic ./src/rshell.cpp -o bin/rshell
+[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~/CS100/rshell[0;95m (exec) [0;36m$[0m bin/rshell
+mchen046@hammer.cs.ucr.edu$ #empty cases
+mchen046@hammer.cs.ucr.edu$ 
+mchen046@hammer.cs.ucr.edu$ #lslslsls       echo hello
+mchen046@hammer.cs.ucr.edu$ # #comments
+mchen046@hammer.cs.ucr.edu$ ls& #hello
+bin  exec.script  LICENSE  Makefile  README.md	src  tests
+mchen046@hammer.cs.ucr.edu$ ls# echo hello
+bin  exec.script  LICENSE  Makefile  README.md	src  tests
+mchen046@hammer.cs.ucr.edu$ ls  ls -a##### echo hello
+.  ..  bin  exec.script  .git  LICENSE	Makefile  README.md  src  tests
+mchen046@hammer.cs.ucr.edu$ # b  basic commands
+mchen046@hammer.cs.ucr.edu$ ls
+bin  exec.script  LICENSE  Makefile  README.md	src  tests
+mchen046@hammer.cs.ucr.edu$ ls bin src tests
+bin:
+rshell
+
+src:
+rshell.cpp
+
+tests:
+mchen046@hammer.cs.ucr.edu$ ls -a
+.  ..  bin  exec.script  .git  LICENSE	Makefile  README.md  src  tests
+mchen046@hammer.cs.ucr.edu$ ls; ls-a; ls-l; l ce  echo hello
+bin  exec.script  LICENSE  Makefile  README.md	src  tests
+error in execvp: No such file or directory
+error in execvp: No such file or directory
+hello
+mchen046@hammer.cs.ucr.edu$ ls; ls -a; ls -l; echo hello
+bin  exec.script  LICENSE  Makefile  README.md	src  tests
+.  ..  bin  exec.script  .git  LICENSE	Makefile  README.md  src  tests
+total 24
+drwx------ 2 mchen046 csmajs 4096 Apr 20 00:29 bin
+-rw------- 1 mchen046 csmajs    0 Apr 20 00:29 exec.script
+-rw------- 1 mchen046 csmajs 1080 Apr 11 17:34 LICENSE
+-rw------- 1 mchen046 csmajs  229 Apr 19 23:58 Makefile
+-rw------- 1 mchen046 csmajs 3114 Apr 19 23:58 README.md
+drwx------ 2 mchen046 csmajs 4096 Apr 19 23:58 src
+drwx------ 2 mchen046 csmajs 4096 Apr 20 00:29 tests
+hello
+mchen046@hammer.cs.ucr.edu$ ls  #multiple flags
+mchen046@hammer.cs.ucr.edu$ ls -aaaaaaaaaaaaaaaaaaaa
+.  ..  bin  exec.script  .git  LICENSE	Makefile  README.md  src  tests
+mchen046@hammer.cs.ucr.edu$ ls -llllllllllllllllllll l
+total 24
+drwx------ 2 mchen046 csmajs 4096 Apr 20 00:29 bin
+-rw------- 1 mchen046 csmajs    0 Apr 20 00:29 exec.script
+-rw------- 1 mchen046 csmajs 1080 Apr 11 17:34 LICENSE
+-rw------- 1 mchen046 csmajs  229 Apr 19 23:58 Makefile
+-rw------- 1 mchen046 csmajs 3114 Apr 19 23:58 README.md
+drwx------ 2 mchen046 csmajs 4096 Apr 19 23:58 src
+drwx------ 2 mchen046 csmajs 4096 Apr 20 00:29 tests
+mchen046@hammer.cs.ucr.edu$ #&& and || eonne     connectors
+mchen046@hammer.cs.ucr.edu$ echo hello && echo world
+hello
+world
+mchen046@hammer.cs.ucr.edu$ echo hello || echo world
+hello
+mchen046@hammer.cs.ucr.edu$ echohello      hello && echo world || ls
+hello
+world
+mchen046@hammer.cs.ucr.edu$ echo hello || echo world && ls
+hello
+bin  exec.script  LICENSE  Makefile  README.md	src  tests
+mchen046@hammer.cs.ucr.edu$ badcommand && echo hello
+error in execvp: No such file or directory
+hello
+mchen046@hammer.cs.ucr.edu$ bad comm     command || echo hello
+error in execvp: No such file or directory
+hello
+mchen046@hammer.cs.ucr.edu$ echo hello && echo world && badcommand || ls
+hello
+world
+error in execvp: No such file or directory
+bin  exec.script  LICENSE  Makefile  README.md	src  tests
+mchen046@hammer.cs.ucr.edu$ badcommand || badcommand || badcommand && ls
+error in execvp: No such file or directory
+error in execvp: No such file or directory
+error in execvp: No such file or directory
+mchen046@hammer.cs.ucr.edu$ badcommand || badcommand || echo hello && echo world
+error in execvp: No such file or directory
+error in execvp: No such file or directory
+hello
+world
+mchen046@hammer.cs.ucr.edu$ #testing rmdir and mkdir
+mchen046@hammer.cs.ucr.edu$ mkdir test && rmdir test
+mchen046@hammer.cs.ucr.edu$ mkdir test && ls
+bin  exec.script  LICENSE  Makefile  README.md	src  test  tests
+mchen046@hammer.cs.ucr.edu$ r mkdir test &&  || ls
+mkdir: cannot create directory `test': File exists
+bin  exec.script  LICENSE  Makefile  README.md	src  test  tests
+mchen046@hammer.cs.ucr.edu$ rmdir test || ls
+mchen046@hammer.cs.ucr.edu$ ls
+bin  exec.script  LICENSE  Makefile  README.md	src  tests
+mchen046@hammer.cs.ucr.edu$ sdsdsdsds         # #gibberish command
+mchen046@hammer.cs.ucr.edu$ sdsdsdssdsdsd
+error in execvp: No such file or directory
+mchen046@hammer.cs.ucr.edu$ ma  ## compiling and running rshell within rshell
+mchen046@hammer.cs.ucr.edu$ make
+if [ ! -d bin ]; then mkdir bin; fi
+g++ -std=c++11 -Wall -Werror -pedantic ./src/rshell.cpp -o bin/rshell
+mchen046@hammer.cs.ucr.edu$ bin/rshell
+mchen046@hammer.cs.ucr.edu$ exit 123        #exit comands
+mchen046@hammer.cs.ucr.edu$ exit 123 123
+rshell: exit: too many arguments
+mchen046@hammer.cs.ucr.edu$ exit 123 hello
+rshell: exit: too many arguments
+mchen046@hammer.cs.ucr.edu$ exit hello 123
+rshell: exit: hello: numeric argument required
+mchen046@hammer.cs.ucr.edu$ bin /  /rshell
+mchen046@hammer.cs.ucr.edu$ exit hello
+rshell: exit: hello: numeric argument required
+mchen046@hammer.cs.ucr.edu$ exit
+[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~/CS100/rshell[0;95m (exec) [0;36m$[0m exit
+exit
+~
+mchen046@hammer $ exit
+exit
+
+Script done on Mon 20 Apr 2015 12:41:25 AM PDT
