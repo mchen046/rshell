@@ -2,11 +2,13 @@
 rshell is a basic command shell using the syscalls fork, execvp, and wait.
 ### Installation
 To install rshell, run these commands:
-	$ git clone https://github.com/mchen046/rshell.git
-	$ cd rshell
-	$ git checkout hw0
-	$ make
-	$ bin/rshell
+```
+$ git clone https://github.com/mchen046/rshell.git
+$ cd rshell
+$ git checkout hw0
+$ make
+$ bin/rshell
+```
 ### Bugs/Limitations/Issues
 **1. commands with a single &**
 
@@ -15,14 +17,12 @@ To install rshell, run these commands:
 - rshell prints `hello & echo world`
 
 - bash prints 
-
 ```
 [1] 29338
 world
 hello
 [1]+ Done					echo hello
 ```
-
 See [documentation](http://bashitout.com/2013/05/18/Ampersands-on-the-command-line.html).
 
 **2. commands with a single |**
@@ -55,7 +55,7 @@ Running `rshell` within rshell spawns a new process that runs within the origina
 
 - rshell prints `rshell: syntax error near unexpected token '&'`
 
-- bash executes the rightmost command, in this case `echo world`
+- bash executes the rightmost command, in this case `echo world`, and prints `world`
 
 `ls &&&&&&&`
 
