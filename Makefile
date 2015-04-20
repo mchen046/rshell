@@ -1,12 +1,6 @@
 all:
-	g++ -std=c++11 -Wall -Werror -pedantic ./src/rshell.cpp
-
+	if [ ! -d bin ]; then mkdir bin; fi
+	g++ -std=c++11 -Wall -Werror -pedantic ./src/rshell.cpp -o bin/rshell
 rshell:
-	g++ -std=c++11 -Wall -Werror -pedantic ./src/rshell.cpp
-run:
-	g++ -std=c++11 -Wall -Werror -pedantic ./src/rshell.cpp
-	./a.out
-gdb: 
-	g++ -std=c++11 -Wall -Werror -pedantic ./src/rshell.cpp -g
-	gdb a.out
-	
+	if [ ! -d bin ]; then mkdir bin; fi
+	g++ -std=c++11 -Wall -Werror -pedantic ./src/rshell.cpp -o bin/rshell
