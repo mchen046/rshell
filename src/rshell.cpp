@@ -175,7 +175,7 @@ void parseDelim(vector<char*> &cmdC, char *cmdB, char const * delim, char **ptr)
 int cAND(vector<char*> &cmdC, char *cmdB, char **ptr){ //parse and execute && command
 	parseDelim(cmdC, cmdB, "&&", &*ptr);
 	int success = 1;
-	for(unsigned int i = 0; i<cmdC.size() && success; i++){
+	for(unsigned int i = 0; i<cmdC.size() && success!=-1; i++){
 		if(execCmd(parseSpace(cmdC[i]))==-1){ //command fails
 			success = -1;
 		}
@@ -193,6 +193,16 @@ int cOR(vector<char*> &cmdC, char *cmdB, char **ptr){ //parse and execute || com
 	}
 	return success;
 }
+
+bool onlySpace(string str){
+	for(unsigned int i = 0; i<str.size(); i++){
+		if(str.at(i)!=' '){
+			return false;
+		}
+	}
+	return true;
+}
+
 
 bool checkConnector(string cmd, string &stringToken){
 	bool valid = true;
@@ -352,6 +362,7 @@ void parseMaster(char* cmdB){
 		}
 	}
 }
+
 int main(){
 	while(1){
 		string cmd, cmd2, stringToken;
@@ -370,7 +381,6 @@ int main(){
 				i=cmd.size();
 			}
 		}
-	
 		/*
 		//check for invalid instances of && and ||
 		if(!checkConnector(cmd2, stringToken)){
@@ -378,7 +388,7 @@ int main(){
 			cmd2 = "";
 		}
 		*/	
-		if(cmd2!=""){ //if command is not empty
+		if(cmd2!="" && !onlySpace(cmd2)){ //if command is not empty
 			//convert string to char*
 			char *cmdA = new char[cmd2.size()+1];
 			for(int i = 0; i<static_cast<int>(cmd2.size()); i++){
@@ -392,7 +402,6 @@ int main(){
 
 			bool cmdBDone = false;
 			while(!cmdBDone){
-				//cout << "cmdB: " << cmdB << endl;
 				parseMaster(cmdB);	
 				cmdB = strtok(NULL, ";");
 				if(cmdB==NULL){
