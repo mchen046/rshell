@@ -17,24 +17,18 @@ https://www.github.com/mchen046/rshell/src/rshell.cpp
 #include <stdio.h>
 #include <boost/tokenizer.hpp>
 #include <boost/token_iterator.hpp>
-#include <fcntl.h>
-#include <errno.h>
-#include <dirent.h>
-#include <set>
 
 using namespace std;
 using namespace boost;
 
 bool exitSeen = false;
 
-void printVect(vector<char*> cmd){ //debugging cmdC
-	//cout << "---------------\ncmd\n";
+void printcmd(vector<char*> cmd){ //debugging cmdC
+	cout << "---------------\ncmd\n";
 	for(unsigned int i = 0; i<cmd.size(); i++){
-		//cout << "cmd[" << i << "]: " << cmd[i] << endl;
-		cout << cmd[i] << '\t';
-		cout.flush();
+		cout << "cmd[" << i << "]: " << cmd[i] << endl;
 	}
-	//cout << "---------------\n";
+	cout << "---------------\n";
 }
 
 int sizeOfPart(char *cmdLine){ //finds size to allocate for execution
@@ -131,116 +125,6 @@ char** parseSpace(char *cmd){
 	//deallocate cmdExec?
 }
 
-int lsOrg(char** cmdD, vector<char*> &cmdFiles, set<char> &cmdFlags){
-	for(int i = 1; cmdD[i]!=NULL; i++){
-		if(cmdD[i][0]=='-'){ //is a flag
-			for(int j = 1; cmdD[i][j]!='\0'; j++){
-				if(cmdD[i][j]=='a' || cmdD[i][j]=='l' || cmdD[i][j]=='R'){
-					cmdFlags.emplace(cmdD[i][j]);
-				}
-				else{
-					cmdFlags.clear();
-					cout << "ls: invalid option -- '" << cmdD[i][j] << '\'' << endl;
-					return -1;
-				}
-			}
-		}
-		else{ //is a file name
-			cmdFiles.push_back(cmdD[i]);
-		}
-	}
-	return 1;
-}
-
-void lsExec(vector<char*> cmdFiles){
-	vector<char*> fileList;
-	if(cmdFiles.empty()){
-		cmdFiles.push_back(const_cast<char*>("."));
-	}
-	for(unsigned int i = 0; i<cmdFiles.size(); i++){
-		
-		DIR *dirp;
-		if(NULL == (dirp = opendir(cmdFiles[i]))){
-			cout << "ls: cannot access " << cmdFiles.at(i) << ": No such file or directory" << endl;
-			perror("There was an error with opendir(). ");
-		}
-
-		errno = 0;
-		struct dirent *filespecs;
-		while( NULL != (filespecs = readdir(dirp))){
-			fileList.push_back(filespecs->d_name);
-		}
-		if(errno!=0){
-			perror("There was an error with readdir(). ");
-			exit(1);
-		}
-
-		if(closedir(dirp) == -1){
-			perror("There was an error with closedir(). ");
-			exit(1);
-		}
-	}
-	printVect(fileList);
-}
-
-int ls(char** cmdD){
-	//conduct error checking here
-	
-	//finding size of cmdD
-	int size = 0;
-	for(;cmdD[size]!=NULL;size++){}
-	//cout << "size: " << size << endl;
-
-	vector<char*> cmdFiles;
-	set<char> cmdFlags;
-	if(lsOrg(cmdD, cmdFiles, cmdFlags)==-1){
-		return -1;
-	}
-	printVect(cmdFiles);
-	for(auto it = cmdFlags.begin(); it!=cmdFlags.end(); it++){
-		cout << *it << endl;
-	}
-	
-	vector<char*> fileList;
-	//converting set to char*
-	char *flags = new char[cmdFlags.size()+1];
-	unsigned int i = 0;
-	for(auto it = cmdFlags.begin(); it!=cmdFlags.end() && i<cmdFlags.size(); it++){
-		flags[i] = *it;
-		if(++i==cmdFlags.size()){
-			flags[i] = '\0';
-		}
-	}
-
-	//checking which flags to use
-	if(hasText(flags, "R")){
-		if(hasText(flags, "l") && !hasText(flags, "a")){ // -lR
-		}
-		else if(hasText(flags, "a") && !hasText(flags, "l")){ // -aR
-		}
-		else if(hasText(flags, "a") && hasText(flags, "l")){ // -alR
-		}
-		else if(!hasText(flags, "a") && !hasText(flags, "l")){ // -R
-		}
-	}
-	else if(hasText(flags, "l") && !hasText(flags, "a")){ // -l
-	}
-	else if(hasText(flags, "a") && !hasText(flags, "l")){ // -a
-	}
-	else if(hasText(flags, "a") && hasText(flags, "l")){ // -la
-	}
-	else if(!hasText(flags, "a") && !hasText(flags, "l") && !hasText(flags, "R")){ // ls
-		lsExec(cmdFiles);
-	}
-
-
-
-
-
-		
-	return 1;
-}
-
 int execCmd(char** cmdD){ //process spawning
 	if(exitSeen){
 		//deallocate cmdD
@@ -260,13 +144,10 @@ int execCmd(char** cmdD){ //process spawning
 	}
 	else if(pid == 0){ //child process
 		//cout << "cmdD[0]: " << cmdD[0] << endl;
-		if(isText(cmdD[0], "ls")){
-			ls(cmdD);
-		}
-		else if(execvp(cmdD[0], cmdD) == -1){
+		if(execvp(cmdD[0], cmdD) == -1){
 			perror("error in execvp"); //status becomes 256/512
+			_exit(2);
 		}
-		_exit(2);
 	}
 	else if(pid > 0){ //parent process
 		if(wait(&status)==-1){		
@@ -497,7 +378,7 @@ void parseMaster(char* cmdB){
 
 int main(){
 	while(1){
-		string cmd, stringToken;
+		string cmd, cmd2, stringToken;
 
 		char host[64];	//prompt
 		gethostname(host,64);
@@ -505,15 +386,14 @@ int main(){
 		getline(cin, cmd);
 		
 		//filter comments
-		if(cmd.at(0)=='#'){
-			cmd="";
+		for(unsigned int i = 0; i<cmd.size(); i++){
+			if(cmd.at(i)!='#'){
+				cmd2.push_back(cmd.at(i));
+			}
+			else{
+				i=cmd.size();
+			}
 		}
-		else{
-			char_separator<char> delim("#");
-			tokenizer<char_separator<char> > mytok(cmd, delim);
-			cmd = *mytok.begin();
-		}
-
 		/*
 		//check for invalid instances of && and ||
 		if(!checkConnector(cmd2, stringToken)){
@@ -521,13 +401,12 @@ int main(){
 			cmd2 = "";
 		}
 		*/	
-
-		if(cmd!="" && !onlySpace(cmd)){ //if command is not empty
+		if(cmd2!="" && !onlySpace(cmd2)){ //if command is not empty
 			//convert string to char*
-			char *cmdA = new char[cmd.size()+1];
-			for(int i = 0; i<static_cast<int>(cmd.size()); i++){
-				cmdA[i] = cmd.at(i);
-				if(i+1==static_cast<int>(cmd.size())){
+			char *cmdA = new char[cmd2.size()+1];
+			for(int i = 0; i<static_cast<int>(cmd2.size()); i++){
+				cmdA[i] = cmd2.at(i);
+				if(i+1==static_cast<int>(cmd2.size())){
 					cmdA[i+1] = '\0'; //null terminating
 				}
 			}
