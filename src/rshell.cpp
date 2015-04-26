@@ -127,6 +127,12 @@ char** parseSpace(char *cmd){
 
 int execCmd(char** cmdD){ //process spawning
 	if(exitSeen){
+		//deallocate cmdD
+		for(int i = 0; cmdD[i]!=NULL; i++){
+			cout << "i: " << i << endl;
+			delete[] cmdD[i];
+		}
+		delete[] cmdD;		
 		return -1;
 	}
 	exitSeen = false;
@@ -155,6 +161,14 @@ int execCmd(char** cmdD){ //process spawning
 		//cout << "command fails!\n";
 		return -1;
 	}
+
+	//deallocate cmdD
+	for(int i = 0; cmdD[i]!=NULL; i++){
+		cout << "i: " << i << endl;
+		delete[] cmdD[i];
+	}
+	delete[] cmdD;
+	
 	return status; //status defaults to 0 if successful
 }
 
@@ -361,6 +375,7 @@ void parseMaster(char* cmdB){
 			delete[] cmdBX;
 		}
 	}
+	cmdC.clear();
 }
 
 int main(){
@@ -393,7 +408,7 @@ int main(){
 			char *cmdA = new char[cmd2.size()+1];
 			for(int i = 0; i<static_cast<int>(cmd2.size()); i++){
 				cmdA[i] = cmd2.at(i);
-				if(i+1==static_cast<int>(cmd.size())){
+				if(i+1==static_cast<int>(cmd2.size())){
 					cmdA[i+1] = '\0'; //null terminating
 				}
 			}
