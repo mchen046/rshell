@@ -81,11 +81,11 @@ void streamcp(char* infile, char* outfile) {
 void rdwrbuf(char* infile, char* outfile) {
 	int fdin;
 	int fdout;
-	if(-1 == (fdout = open(outfile, O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR))) {
+	if(-1 == (fdin = open(infile, O_RDONLY))) {
 		perror("There was an error with open(). ");
 		exit(1);
 	}
-	if(-1 == (fdin = open(infile, O_RDONLY))) {
+	if(-1 == (fdout = open(outfile, O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR))) {
 		perror("There was an error with open(). ");
 		exit(1);
 	}
@@ -118,11 +118,11 @@ void rdwrbuf(char* infile, char* outfile) {
 void rdwr(char* infile, char* outfile) {
 	int fdin;
 	int fdout;
-	if(-1 == (fdout = open(outfile, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR))) {
+	if(-1 == (fdin = open(infile, O_RDONLY))) {
 		perror("There was an error with open(). ");
 		exit(1);
 	}
-	if(-1 == (fdin = open(infile, O_RDONLY))) {
+	if(-1 == (fdout = open(outfile, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR))) {
 		perror("There was an error with open(). ");
 		exit(1);
 	}
