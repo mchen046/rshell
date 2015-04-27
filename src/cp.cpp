@@ -21,13 +21,22 @@ int main(int argc, char** argv) {
 		cout << "Error: Enter at least 2 files. " << endl;
 	}
 	else if(argc == 3) {
-	//	streamcp(argv[1],argv[2]);
-		//rdwr(argv[1], argv[2]);
 		rdwrbuf(argv[1], argv[2]);
 	}
 	else if(argc == 4) {
 		double wt = 0, ut =0, st = 0;
 		Timer wall, user, sys;
+		
+		
+		sys.start();
+		rdwrbuf(argv[1], argv[2]);
+		if(-1 == sys.elapsedTime(wt,ut,st)) {
+			cout << "Error with elapsedTime(). " << endl;
+		}
+		else {
+			cout << "rdwrbuf: wt = " << wt << " ut = " << ut << " st = " << st << endl;
+		}
+		
 		wall.start();
 		streamcp(argv[1],argv[2]);
 		if(-1 == wall.elapsedTime(wt,ut,st) ) {
@@ -46,14 +55,7 @@ int main(int argc, char** argv) {
 			cout << "rdwr: wt = " << wt << " ut = " << ut << " st = " << st << endl;
 		}
 
-		sys.start();
-		rdwrbuf(argv[1], argv[2]);
-		if(-1 == sys.elapsedTime(wt,ut,st)) {
-			cout << "Error with elapsedTime(). " << endl;
-		}
-		else {
-			cout << "rdwrbuf: wt = " << wt << " ut = " << ut << " st = " << st << endl;
-		}
+
 	}
 	else {
 		cout << "Error: too many arguements" << endl;
@@ -116,7 +118,7 @@ void rdwrbuf(char* infile, char* outfile) {
 void rdwr(char* infile, char* outfile) {
 	int fdin;
 	int fdout;
-	if(-1 == (fdout = open(outfile, O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR))) {
+	if(-1 == (fdout = open(outfile, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR))) {
 		perror("There was an error with open(). ");
 		exit(1);
 	}
