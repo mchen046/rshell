@@ -29,15 +29,13 @@ https://www.github.com/mchen046/rshell/src/ls.cpp
 using namespace std;
 using namespace boost;
 
-void printVect(vector<string> cmd){ //debugging cmdC
-	//cout << "---------------\ncmd\n";
+void printVect(vector<string> cmd, bool a){ 
 	for(unsigned int i = 0; i<cmd.size(); i++){
-		//cout << "cmd[" << i << "]: " << cmd[i] << endl;
-		cout << cmd[i] << "    ";
-		//cout.flush();
+		if(a || cmd[i][0]!='.'){
+			cout << cmd[i] << "  ";
+		}
 	}
 	cout << endl;
-	//cout << "---------------\n";
 }
 
 bool hasText(string cmdText, string text){
@@ -129,62 +127,61 @@ void getFiles(vector<string> cmdFiles, vector<string> &fileList){
 	}
 }
 
-void flag_l(vector<string> fileList){
+void flag_l(vector<string> fileList, bool a){
 	struct stat s;
 	struct passwd *userID;
 	struct group *groupID;
 
 	for(unsigned int i = 0; i<fileList.size(); i++){
-		if(stat(fileList[i].c_str(), &s)<0){
-			perror("stat");
-			exit(1);
+		if(a || fileList[i][0]!='.'){
+			if(stat(fileList[i].c_str(), &s)<0){
+				perror("stat");
+				exit(1);
+			}
+			
+			//permissions
+			cout << ((S_IFDIR & s.st_mode)?"d":"-")
+				<< ((S_IRUSR & s.st_mode)?"r":"-")
+				<< ((S_IWUSR & s.st_mode)?"w":"-")
+				<< ((S_IXUSR & s.st_mode)?"x":"-")
+				<< ((S_IRGRP & s.st_mode)?"r":"-")
+				<< ((S_IWGRP & s.st_mode)?"w":"-")
+				<< ((S_IXGRP & s.st_mode)?"x":"-")
+				<< ((S_IROTH & s.st_mode)?"r":"-")
+				<< ((S_IWOTH & s.st_mode)?"w":"-")
+				<< ((S_IXOTH & s.st_mode)?"x":"-");
+
+			//number of links
+			cout << ' ' << s.st_nlink << ' '; 
+
+			//userID
+			if(!(userID = getpwuid(s.st_uid))){
+				perror("getpwuid");
+				exit(1);
+			}
+			cout << userID->pw_name << ' ';
+
+			//groupID
+			if(!(groupID = getgrgid(s.st_gid))){
+				perror("getgrgid");
+				exit(1);
+			}
+			cout << groupID->gr_name << ' ';
+
+			//size of file/dir
+			cout.width(4); cout << right << s.st_size << ' '; //cout width temporary fix
+
+			//time using struct tm timeInfo
+			//error check with NULL
+			char date[15];
+			struct tm *timeInfo;
+			if(NULL == (timeInfo = localtime(&(s.st_mtime)))){
+				perror("localtime");
+				exit(1);
+			}
+			strftime(date, 15, "%b %d %H:%M", localtime(&(s.st_mtime)));
+			cout << date << ' ' << fileList[i] << endl;
 		}
-		
-		//permissions
-		cout << ((S_IFDIR & s.st_mode)?"d":"-")
-			<< ((S_IRUSR & s.st_mode)?"r":"-")
-			<< ((S_IWUSR & s.st_mode)?"w":"-")
-			<< ((S_IXUSR & s.st_mode)?"x":"-")
-			<< ((S_IRGRP & s.st_mode)?"r":"-")
-			<< ((S_IWGRP & s.st_mode)?"w":"-")
-			<< ((S_IXGRP & s.st_mode)?"x":"-")
-			<< ((S_IROTH & s.st_mode)?"r":"-")
-			<< ((S_IWOTH & s.st_mode)?"w":"-")
-			<< ((S_IXOTH & s.st_mode)?"x":"-");
-
-		//number of links
-		cout << ' ' << s.st_nlink << ' '; 
-
-		//userID
-		if(!(userID = getpwuid(s.st_uid))){
-			perror("getpwuid");
-			exit(1);
-		}
-		cout << userID->pw_name << ' ';
-
-		//groupID
-		if(!(groupID = getgrgid(s.st_gid))){
-			perror("getgrgid");
-			exit(1);
-		}
-		cout << groupID->gr_name << ' ';
-
-		//size of file/dir
-		cout.width(4); cout << right << s.st_size << ' '; //cout width temporary fix
-
-		//time using struct tm timeInfo
-		//error check with NULL
-		char date[15];
-		struct tm *timeInfo;
-		if(NULL == (timeInfo = localtime(&(s.st_mtime)))){
-			perror("localtime");
-			exit(1);
-		}
-		strftime(date, 15, "%b %d %H:%M", localtime(&(s.st_mtime)));
-		cout << date << ' ';
-
-
-		cout << fileList[i] << endl;
 	}
 }
 
@@ -201,17 +198,20 @@ void lsExec(vector<string> cmdFiles, string flags){
 		else if(hasText(flags, "a") && hasText(flags, "l")){ // -alR
 		}
 		else if(!hasText(flags, "a") && !hasText(flags, "l")){ // -R
+
 		}
 	}
 	else if(hasText(flags, "l") && !hasText(flags, "a")){ // -l
-		flag_l(fileList);
+		flag_l(fileList, false);
 	}
 	else if(hasText(flags, "a") && !hasText(flags, "l")){ // -a
+		printVect(fileList, true);
 	}
 	else if(hasText(flags, "a") && hasText(flags, "l")){ // -la
+		flag_l(fileList, true);
 	}
 	else if(!hasText(flags, "a") && !hasText(flags, "l") && !hasText(flags, "R")){ // ls
-		printVect(fileList);
+		printVect(fileList, false);
 	}
 }
 
