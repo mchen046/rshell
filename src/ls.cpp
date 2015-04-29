@@ -132,6 +132,19 @@ void flag_l(vector<string> fileList, bool a){
 	struct passwd *userID;
 	struct group *groupID;
 
+	//total number of blocks
+	int total = 0;
+	for(unsigned i  = 0; i<fileList.size(); i++){
+		if(a || fileList[i][0] != '.'){
+			if(stat(fileList[i].c_str(), &s)<0){
+				perror("stat");
+				exit(1);
+			}
+			total+=s.st_blocks;
+		}
+	}
+	cout << "total " << total/2 << endl;
+
 	for(unsigned int i = 0; i<fileList.size(); i++){
 		if(a || fileList[i][0]!='.'){
 			if(stat(fileList[i].c_str(), &s)<0){
