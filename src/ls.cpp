@@ -8,6 +8,7 @@ https://www.github.com/mchen046/rshell/src/ls.cpp
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <wait.h>
 #include <string.h>
 #include <string>
@@ -21,37 +22,28 @@ https://www.github.com/mchen046/rshell/src/ls.cpp
 #include <errno.h>
 #include <dirent.h>
 #include <set>
+#include <pwd.h>
+#include <grp.h>
+#include <time.h>
 
 using namespace std;
 using namespace boost;
 
-bool exitSeen = false;
-
-void printVect(vector<char*> cmd){ //debugging cmdC
+void printVect(vector<string> cmd){ //debugging cmdC
 	//cout << "---------------\ncmd\n";
 	for(unsigned int i = 0; i<cmd.size(); i++){
 		//cout << "cmd[" << i << "]: " << cmd[i] << endl;
-		cout << cmd[i] << '\t';
-		cout.flush();
+		cout << cmd[i] << "    ";
+		//cout.flush();
 	}
+	cout << endl;
 	//cout << "---------------\n";
 }
 
-int sizeOfPart(char *cmdLine){ //finds size to allocate for execution
-	string str = static_cast<string>(cmdLine);
-	char_separator<char> delim(" ");
-	tokenizer< char_separator<char> > mytok(str, delim);
-	int size= 0;
-	for(tokenizer<char_separator<char> >::iterator it = mytok.begin(); it!=mytok.end(); it++){
-		size++;
-	}
-	return size;
-}
-
-bool hasText(char* cmdText, string text){
+bool hasText(string cmdText, string text){
 	unsigned int count = 0;
 	int j = 0;
-	for(unsigned int i = 0; cmdText[i]!='\0'; i++){
+	for(unsigned int i = 0; i<cmdText.size(); i++){
 		if(cmdText[i]!=text[j]){
 			count = 0;
 			j = 0;
@@ -78,91 +70,45 @@ bool isText(char* cmdText, string text){
 	return true;
 }
 
-bool isNumericOnly(const string &str){
-	return all_of(str.begin(), str.end(), ::isdigit);
-}
-
-char** parseSpace(char *cmd){
-	string str = static_cast<string>(cmd); //parsing " "	
-	char_separator<char> delim(" ");
-	tokenizer< char_separator<char> > mytok(str, delim);
-
-	int size = 0;
-	for(tokenizer<char_separator<char> >::iterator it = mytok.begin(); it!=mytok.end(); it++){
-		size++;
-	}
-	
-	//creating cmdExec
-	char **cmdExec = new char*[size+1];
-
-	int i = 0;
-	for(tokenizer<char_separator<char> >::iterator it = mytok.begin(); it!=mytok.end(); it++){
-		string cmdString = static_cast<string>(*it);
-		char *token = new char[cmdString.size()+1];
-		for(unsigned int j = 0; j<cmdString.size(); j++){
-			token[j] = cmdString[j];
-			if(j+1==cmdString.size()){
-				token[j+1] = '\0';
-			}
-		}
-		cmdExec[i] = token;
-		tokenizer<char_separator<char> >::iterator itA = it;
-		if(++itA==mytok.end()){
-			cmdExec[i+1] = NULL;
-		}
-		i++;	
-		//deallocate token?
-	}
-	if(isText(cmdExec[0], "exit") || isText(cmdExec[0], "exit;")){ //exit executable
-		exitSeen = true;
-		if(cmdExec[1]!=NULL && !isNumericOnly(static_cast<string>(cmdExec[1]))){
-			cout << "rshell: exit: " << cmdExec[1] << ": numeric argument required" << endl;
-			exit(0); //exit
-		}
-		else if(cmdExec[1]!=NULL && cmdExec[2]!=NULL){
-			cout << "rshell: exit: too many arguments" << endl;
-		}
-		else{
-			exit(0); //exit
-		}
-	}
-	return cmdExec;
-	//end creating cmdExec
-	//deallocate cmdExec?
-}
-
-int lsOrg(char** cmdD, vector<char*> &cmdFiles, set<char> &cmdFlags){
-	for(int i = 1; cmdD[i]!=NULL; i++){
-		if(cmdD[i][0]=='-'){ //is a flag
-			for(int j = 1; cmdD[i][j]!='\0'; j++){
-				if(cmdD[i][j]=='a' || cmdD[i][j]=='l' || cmdD[i][j]=='R'){
-					cmdFlags.emplace(cmdD[i][j]);
+int lsOrg(vector<string> cmd, vector<string> &cmdFiles, set<char> &cmdFlags){
+	for(unsigned int i = 1; i<cmd.size(); i++){
+		if(cmd[i][0]=='-'){ //is a flag
+			for(int j = 1; cmd[i][j]!='\0'; j++){
+				if(cmd[i][j]=='a' || cmd[i][j]=='l' || cmd[i][j]=='R'){
+					cmdFlags.emplace(cmd[i][j]);
 				}
 				else{
 					cmdFlags.clear();
-					cout << "ls: invalid option -- '" << cmdD[i][j] << '\'' << endl;
+					cout << "ls: invalid option -- '" << cmd[i][j] << '\'' << endl;
 					return -1;
 				}
 			}
 		}
 		else{ //is a file name
-			cmdFiles.push_back(cmdD[i]);
+			cmdFiles.push_back(cmd[i]);
 		}
 	}
 	return 1;
 }
 
-void lsExec(vector<char*> cmdFiles){
-	vector<char*> fileList;
+void getFiles(vector<string> cmdFiles, vector<string> &fileList){
 	if(cmdFiles.empty()){
-		cmdFiles.push_back(const_cast<char*>("."));
+		cmdFiles.push_back(".");
 	}
 	for(unsigned int i = 0; i<cmdFiles.size(); i++){
-		
 		DIR *dirp;
-		if(NULL == (dirp = opendir(cmdFiles[i]))){
-			cout << "ls: cannot access " << cmdFiles.at(i) << ": No such file or directory" << endl;
-			perror("There was an error with opendir(). ");
+		//converting string to char*
+		char *dir = new char[cmdFiles[i].size()+1];
+		for(unsigned int j = 0; j<cmdFiles[i].size()+1; j++){
+			dir[j] = cmdFiles[i][j];
+			if(j==cmdFiles[i].size()){
+				dir[j] = '\0';
+			}
+		}
+
+		if(NULL == (dirp = opendir(dir))){
+			cout << "ls: cannot access " << cmdFiles[i] << ": No such file or directory" << endl;
+			perror("opendir");
 		}
 
 		errno = 0;
@@ -170,47 +116,81 @@ void lsExec(vector<char*> cmdFiles){
 		while( NULL != (filespecs = readdir(dirp))){
 			fileList.push_back(filespecs->d_name);
 		}
+
 		if(errno!=0){
-			perror("There was an error with readdir(). ");
+			perror("readdir");
 			exit(1);
 		}
 
 		if(closedir(dirp) == -1){
-			perror("There was an error with closedir(). ");
+			perror("closedir");
 			exit(1);
 		}
 	}
-	printVect(fileList);
 }
 
-int ls(char** cmdD){
-	//conduct error checking here
-	
-	//finding size of cmdD
-	int size = 0;
-	for(;cmdD[size]!=NULL;size++){}
-	//cout << "size: " << size << endl;
+void flag_l(vector<string> fileList){
+	struct stat s;
+	struct passwd *userID;
+	struct group *groupID;
 
-	vector<char*> cmdFiles;
-	set<char> cmdFlags;
-	if(lsOrg(cmdD, cmdFiles, cmdFlags)==-1){
-		return -1;
-	}
-	printVect(cmdFiles);
-	for(auto it = cmdFlags.begin(); it!=cmdFlags.end(); it++){
-		cout << *it << endl;
-	}
-	
-	vector<char*> fileList;
-	//converting set to char*
-	char *flags = new char[cmdFlags.size()+1];
-	unsigned int i = 0;
-	for(auto it = cmdFlags.begin(); it!=cmdFlags.end() && i<cmdFlags.size(); it++){
-		flags[i] = *it;
-		if(++i==cmdFlags.size()){
-			flags[i] = '\0';
+	for(unsigned int i = 0; i<fileList.size(); i++){
+		if(stat(fileList[i].c_str(), &s)<0){
+			perror("stat");
+			exit(1);
 		}
+		
+		//permissions
+		cout << ((S_IFDIR & s.st_mode)?"d":"-")
+			<< ((S_IRUSR & s.st_mode)?"r":"-")
+			<< ((S_IWUSR & s.st_mode)?"w":"-")
+			<< ((S_IXUSR & s.st_mode)?"x":"-")
+			<< ((S_IRGRP & s.st_mode)?"r":"-")
+			<< ((S_IWGRP & s.st_mode)?"w":"-")
+			<< ((S_IXGRP & s.st_mode)?"x":"-")
+			<< ((S_IROTH & s.st_mode)?"r":"-")
+			<< ((S_IWOTH & s.st_mode)?"w":"-")
+			<< ((S_IXOTH & s.st_mode)?"x":"-");
+
+		//number of links
+		cout << ' ' << s.st_nlink << ' '; 
+
+		//userID
+		if(!(userID = getpwuid(s.st_uid))){
+			perror("getpwuid");
+			exit(1);
+		}
+		cout << userID->pw_name << ' ';
+
+		//groupID
+		if(!(groupID = getgrgid(s.st_gid))){
+			perror("getgrgid");
+			exit(1);
+		}
+		cout << groupID->gr_name << ' ';
+
+		//size of file/dir
+		cout.width(4); cout << right << s.st_size << ' '; //cout width temporary fix
+
+		//time using struct tm timeInfo
+		//error check with NULL
+		char date[15];
+		struct tm *timeInfo;
+		if(NULL == (timeInfo = localtime(&(s.st_mtime)))){
+			perror("localtime");
+			exit(1);
+		}
+		strftime(date, 15, "%b %d %H:%M", localtime(&(s.st_mtime)));
+		cout << date << ' ';
+
+
+		cout << fileList[i] << endl;
 	}
+}
+
+void lsExec(vector<string> cmdFiles, string flags){
+	vector<string> fileList;
+	getFiles(cmdFiles, fileList);
 
 	//checking which flags to use
 	if(hasText(flags, "R")){
@@ -224,327 +204,48 @@ int ls(char** cmdD){
 		}
 	}
 	else if(hasText(flags, "l") && !hasText(flags, "a")){ // -l
+		flag_l(fileList);
 	}
 	else if(hasText(flags, "a") && !hasText(flags, "l")){ // -a
 	}
 	else if(hasText(flags, "a") && hasText(flags, "l")){ // -la
 	}
 	else if(!hasText(flags, "a") && !hasText(flags, "l") && !hasText(flags, "R")){ // ls
-		lsExec(cmdFiles);
+		printVect(fileList);
+	}
+}
+
+int ls(vector<string> cmd){
+	//conduct error checking here
+
+	vector<string> cmdFiles;
+	set<char> cmdFlags;
+	if(lsOrg(cmd, cmdFiles, cmdFlags)==-1){
+		return -1;
 	}
 
+	//printVect(cmdFiles);
+	/*for(auto it = cmdFlags.begin(); it!=cmdFlags.end(); it++){
+		cout << *it << endl;
+	}*/
+	
+	//converting set<char> to string
+	string flags;
+	for(auto it = cmdFlags.begin(); it!=cmdFlags.end(); it++){
+		flags.push_back(*it);
+	}
 
+	lsExec(cmdFiles, flags);
 
-
-
-		
 	return 1;
 }
-
-int execCmd(char** cmdD){ //process spawning
-	if(exitSeen){
-		//deallocate cmdD
-		for(int i = 0; cmdD[i]!=NULL; i++){
-			delete[] cmdD[i];
-		}
-		delete[] cmdD;		
-		return -1;
-	}
-	exitSeen = false;
-	int pid = fork();
-	int status = 0;
-	//cout << "cmdD[0]: " << cmdD[0] << endl;
-	if(pid == -1){ //error
-		perror("fork() error");
-		_exit(2);
-	}
-	else if(pid == 0){ //child process
-		//cout << "cmdD[0]: " << cmdD[0] << endl;
-		if(isText(cmdD[0], "ls")){
-			ls(cmdD);
-		}
-		else if(execvp(cmdD[0], cmdD) == -1){
-			perror("error in execvp"); //status becomes 256/512
-		}
-		_exit(2);
-	}
-	else if(pid > 0){ //parent process
-		if(wait(&status)==-1){		
-			perror("error in wait()");
-			_exit(2);
-		}
-	}
-	//cout << "status: " << status << endl;
-	if(status!=0){ //command fails 
-		//cout << "command fails!\n";
-		return -1;
+int main(int argc, char** argv){
+	vector<string> cmd;
+	for(int i = 0; i<argc; i++){
+		cmd.push_back(argv[i]);
 	}
 
-	//deallocate cmdD
-	for(int i = 0; cmdD[i]!=NULL; i++){
-		delete[] cmdD[i];
-	}
-	delete[] cmdD;
+	ls(cmd);
 	
-	return status; //status defaults to 0 if successful
-}
-
-
-void parseDelim(vector<char*> &cmdC, char *cmdB, char const * delim, char **ptr){
-	char *token = strtok_r(cmdB, delim, &*ptr);
-	cmdC.push_back(token);
-	while(hasText(*ptr, delim)){
-		token = strtok_r(NULL, delim, &*ptr);
-		cmdC.push_back(token);
-	}
-	token = strtok_r(NULL, delim, *&ptr);
-	cmdC.push_back(token);
-	//delete[] ptr;
-	//delete[] token;
-}
-
-int cAND(vector<char*> &cmdC, char *cmdB, char **ptr){ //parse and execute && command
-	parseDelim(cmdC, cmdB, "&&", &*ptr);
-	int success = 1;
-	for(unsigned int i = 0; i<cmdC.size() && success!=-1; i++){
-		if(execCmd(parseSpace(cmdC[i]))==-1){ //command fails
-			success = -1;
-		}
-	}
-	return success;
-}
-
-int cOR(vector<char*> &cmdC, char *cmdB, char **ptr){ //parse and execute || command
-	parseDelim(cmdC, cmdB, "||", &*ptr);
-	int success = -1;
-	for(unsigned int i = 0; i<cmdC.size() && success==-1; i++){
-		if(!execCmd(parseSpace(cmdC[i]))){ //command succeeds
-			success = 1;
-		}
-	}
-	return success;
-}
-
-bool onlySpace(string str){
-	for(unsigned int i = 0; i<str.size(); i++){
-		if(str.at(i)!=' '){
-			return false;
-		}
-	}
-	return true;
-}
-
-
-bool checkConnector(string cmd, string &stringToken){
-	bool valid = true;
-	bool space = false;
-	for(unsigned int i = 0; i<cmd.size() && valid; i++){
-		if(cmd.at(i)=='&'){
-			for(unsigned int j = i+1; j<cmd.size() && valid; j++){
-				if(cmd.at(j)=='|'){
-					stringToken = "|";
-					valid = false;
-				}
-				else if(cmd.at(j)=='&'){
-					if(space){
-						stringToken = "&";
-						if(j+1<cmd.size() && cmd.at(j+1)=='&'){
-							stringToken = "&&";
-						}
-						valid = false;
-					}
-					for(unsigned int k = j+1; k<cmd.size() && valid; k++){
-						if(cmd.at(k)=='&'){
-							stringToken = "&";
-							if(space){
-								stringToken = "&";
-								if(k+1<cmd.size() && cmd.at(k+1)=='&'){
-									stringToken = "&&";
-								}
-							}
-							valid = false;
-						}
-						else if(cmd.at(k)=='|'){
-							stringToken = "||";
-							if(space){
-								stringToken = "|";
-							}
-							valid = false;
-						}
-						else if(cmd.at(k)==' '){
-							space = true;
-						}
-					}
-				}
-				else if(cmd.at(j)==' '){
-					space = true;
-				}
-			}
-		}
-		else if(cmd.at(i)=='|'){
-			for(unsigned int j = i+1; j<cmd.size() && valid; j++){
-				if(cmd.at(j)=='&'){
-					stringToken = "&";
-					valid = false;
-				}
-				else if(cmd.at(j)=='|'){
-					if(space){
-						stringToken = "|";
-						if(j+1<cmd.size() && cmd.at(j+1)=='|'){
-							stringToken = "||";
-						}
-						valid = false;
-					}
-					for(unsigned int k = j+1; k<cmd.size() && valid; k++){
-						if(cmd.at(k)=='|'){
-							stringToken = "|";
-							if(space){
-								stringToken = "|";
-								if(k+1<cmd.size() && cmd.at(k+1)=='|'){
-									stringToken = "||";
-								}
-							}
-							valid = false;
-						}
-						else if(cmd.at(k)=='&'){
-							stringToken = "&&";
-							if(space){
-								stringToken = "&";
-							}
-							valid = false;
-						}
-						else if(cmd.at(k)==' '){
-							space = true;
-						}
-					}
-				}
-				else if(cmd.at(j)==' '){
-					space = true;
-				}
-			}
-		}
-	}
-	return valid;
-}
-
-void parseMaster(char* cmdB){
-	char *ptr;
-	vector <char*> cmdC;
-	if((hasText(cmdB, "\"") || hasText(cmdB, "(") || hasText(cmdB, ")")) && !hasText(cmdB, "&&") && !hasText(cmdB, "||")){
-		if(hasText(cmdB, "&") || hasText(cmdB, "|")){
-			execCmd(parseSpace(cmdB));
-		}
-		else{
-			//invalid command
-			cout << "rshell: " << cmdB  <<": command not found\n";
-		}
-	}
-	else if(!hasText(cmdB, "&&") && !hasText(cmdB, "||")){
-		//execute
-		execCmd(parseSpace(cmdB));
-	}
-	else if(hasText(cmdB, "&&") && !hasText(cmdB, "||")){ //only has &&
-		cAND(cmdC, cmdB, &ptr);
-	}
-	else if(!hasText(cmdB, "&&") && hasText(cmdB, "||")){ //only has ||
-		cOR(cmdC, cmdB, &ptr);
-	}
-	else if(hasText(cmdB, "&&") && hasText(cmdB, "||")){ //has both && and ||
-		char* cmdBX = new char[strlen(cmdB)]; //backup cmdB
-		strcpy(cmdBX, cmdB);
-
-		bool succeed;
-		char *ptrA;
-		vector<char*> cmdD;
-		parseDelim(cmdC, cmdB, "||", &ptr);
-		if(hasText(cmdC[0], "&&")){ //vector of && commands separated by ||
-			succeed = false;
-			//printcmd(cmdC);
-			for(unsigned int i = 0; i<cmdC.size() && !succeed; i++){
-				if(hasText(cmdC[i], "&&")){
-					if(cAND(cmdD, cmdC[i], &ptrA)!=-1){ //connectorAnd succeeds
-						succeed	= true;
-					}
-				}
-				else if(!execCmd(parseSpace(cmdC[i]))){
-					succeed = true;
-				}
-			}
-			cmdD.clear();
-		}
-		else{ //vector of || commands separated by &&
-			succeed = true;
-			cmdC.clear();
-			cmdB = cmdBX; //restore cmdB	
-			parseDelim(cmdC, cmdB, "&&", &ptr);
-			//printcmd(cmdC);
-			for(unsigned int i = 0; i<cmdC.size() && succeed; i++){
-				if(hasText(cmdC[i], "||")){
-					if(cOR(cmdD, cmdC[i], &ptrA)==-1){
-						succeed = false;
-					}
-				}
-				else if(execCmd(parseSpace(cmdC[i]))==-1){
-					succeed = false;
-				}
-				cmdD.clear();
-			}
-			delete[] cmdBX;
-		}
-	}
-	cmdC.clear();
-}
-
-int main(){
-	while(1){
-		string cmd, stringToken;
-
-		char host[64];	//prompt
-		gethostname(host,64);
-		cout << getlogin() << '@' << host << "$ ";
-		getline(cin, cmd);
-		
-		//filter comments
-		if(cmd.at(0)=='#'){
-			cmd="";
-		}
-		else{
-			char_separator<char> delim("#");
-			tokenizer<char_separator<char> > mytok(cmd, delim);
-			cmd = *mytok.begin();
-		}
-
-		/*
-		//check for invalid instances of && and ||
-		if(!checkConnector(cmd2, stringToken)){
-			cout << "rshell: syntax error near unexpected token \'" << stringToken << "\'" << endl;
-			cmd2 = "";
-		}
-		*/	
-
-		if(cmd!="" && !onlySpace(cmd)){ //if command is not empty
-			//convert string to char*
-			char *cmdA = new char[cmd.size()+1];
-			for(int i = 0; i<static_cast<int>(cmd.size()); i++){
-				cmdA[i] = cmd.at(i);
-				if(i+1==static_cast<int>(cmd.size())){
-					cmdA[i+1] = '\0'; //null terminating
-				}
-			}
-
-			char *cmdB = strtok(cmdA, ";"); //parsing ";"
-
-			bool cmdBDone = false;
-			while(!cmdBDone){
-				parseMaster(cmdB);	
-				cmdB = strtok(NULL, ";");
-				if(cmdB==NULL){
-					cmdBDone = true;
-				}
-			}
-			delete[] cmdA;
-			delete[] cmdB;
-		}
-	}
 	return 0;
 }
