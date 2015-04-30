@@ -128,6 +128,10 @@ void getFiles(vector<string> cmdFiles, vector<string> &fileList){
 	}
 }
 
+void chop(string &text){
+	
+
+
 void flag_l(vector<string> fileList, bool a){
 	struct stat s;
 	struct passwd *userID;
@@ -135,9 +139,10 @@ void flag_l(vector<string> fileList, bool a){
 
 	//total number of blocks
 	int total = 0;
+	//cout << "fileList.size(): " << fileList.size() << endl;
 	for(unsigned i  = 0; i<fileList.size(); i++){
-		if(a || fileList[i][0] != '.' || (fileList[i].size()>1 && fileList[i][1]!='/' && fileList[i][1]!='.')){
-			cout << "fileList[" << i << "]: " << fileList[i] << endl;
+		if(a || (fileList[i][0]=='.' && fileList[i][1]=='/') || fileList[i][0]!='.'){
+			//cout << "fileList[" << i << "]: " << fileList[i] << endl;
 			if(stat(fileList[i].c_str(), &s)<0){
 				perror("stat");
 				exit(1);
@@ -148,8 +153,8 @@ void flag_l(vector<string> fileList, bool a){
 	cout << "total " << total/2 << endl;
 
 	for(unsigned int i = 0; i<fileList.size(); i++){
-		if(a || fileList[i][0] != '.' || (fileList[i].size()>1 && fileList[i][1]!='/' && fileList[i][1]!='.')){
-			cout << "fileList[" << i << "]: " << fileList[i] << endl;
+		if(a || (fileList[i][0]=='.' && fileList[i][1]=='/') || fileList[i][0]!='.'){
+			//cout << "fileList[" << i << "]: " << fileList[i] << endl;
 			if(stat(fileList[i].c_str(), &s)<0){
 				perror("stat");
 				exit(1);
@@ -207,7 +212,7 @@ void flag_R(vector<string> fileList, string parent, bool a, bool l){
 	vector<string> cmdFiles;
 
 	for(unsigned int i = 0; i<fileList.size(); i++){
-		if(a || fileList[i][0] != '.' || (fileList[i].size()>1 && fileList[i][1]!='/' && fileList[i][1]!='.')){
+		if(a || (fileList[i][0]=='.' && fileList[i][1]=='/') || fileList[i][0]!='.'){
 			string absolName = parent + "/" + fileList[i];
 			//cout << "absolName: " << absolName << endl;
 			if(stat(absolName.c_str(), &s)<0){
@@ -221,8 +226,11 @@ void flag_R(vector<string> fileList, string parent, bool a, bool l){
 				if(l){
 					vector<string> fileListNew_l;
 					for(unsigned j = 0; j<fileListNew.size(); j++){
-						//cout << parent << "/" << fileListNew[j] << endl;
-						fileListNew_l.push_back(parent + "/" + fileListNew[j]);
+					
+						if(a || (fileListNew[j][0]=='.' && fileListNew[j][1]=='/') || fileListNew[j][0]!='.'){
+							//cout << absolName << "/" << fileListNew[j] << endl;
+							fileListNew_l.push_back(absolName + "/" + fileListNew[j]);
+						}
 					}
 					flag_l(fileListNew_l, a);
 				}
@@ -254,7 +262,7 @@ void lsExec(vector<string> cmdFiles, string flags){
 	if(hasText(flags, "R")){
 		cout << ".:" << endl;
 		if(hasText(flags, "l") && !hasText(flags, "a")){ // -lR
-			printVect(fileList, false);
+			flag_l(fileList, false);
 			cout << endl;
 			flag_R(fileList, ".", false, true);	
 		}
