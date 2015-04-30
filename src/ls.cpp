@@ -128,8 +128,17 @@ void getFiles(vector<string> cmdFiles, vector<string> &fileList){
 	}
 }
 
-void chop(string &text){
-	
+void chop(string text){
+	char_separator<char> delim("/");
+	tokenizer<char_separator<char> >mytok(text, delim);
+	auto it = mytok.begin();
+	for(; it != mytok.end(); it++){
+		auto itA = it;
+		if(++itA==mytok.end()){
+			cout << *it << endl;
+		}
+	}
+}
 
 
 void flag_l(vector<string> fileList, bool a){
@@ -201,7 +210,8 @@ void flag_l(vector<string> fileList, bool a){
 				exit(1);
 			}
 			strftime(date, 15, "%b %d %H:%M", localtime(&(s.st_mtime)));
-			cout << date << ' ' << fileList[i] << endl;
+			cout << date << ' ';
+			chop(fileList[i]);
 		}
 	}
 }
