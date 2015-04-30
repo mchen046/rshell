@@ -89,6 +89,18 @@ int lsOrg(vector<string> cmd, vector<string> &cmdFiles, set<char> &cmdFlags){
 	return 1;
 }
 
+/*void sortVect(vector<string> &fileList){
+	vector<string> temp;
+	for(unsigned int i = 0; i<fileList.size(); i++){
+		temp.push_back()
+
+	for(unsigned int i = 0; i<fileList.size(); i++){
+		if(fileList[i][0]=='.'fileList[i][0]>=a){
+			temp.push_back()	*/
+
+
+
+
 void getFiles(vector<string> cmdFiles, vector<string> &fileList){
 	if(cmdFiles.empty()){
 		cmdFiles.push_back(".");
@@ -126,6 +138,7 @@ void getFiles(vector<string> cmdFiles, vector<string> &fileList){
 			exit(1);
 		}
 	}
+	sort(fileList.begin(), fileList.end());
 }
 
 void chop(string text){
@@ -222,7 +235,7 @@ void flag_R(vector<string> fileList, string parent, bool a, bool l){
 	vector<string> cmdFiles;
 
 	for(unsigned int i = 0; i<fileList.size(); i++){
-		if(a || (fileList[i][0]=='.' && fileList[i][1]=='/') || fileList[i][0]!='.'){
+		if((fileList[i]!="." && fileList[i]!="..") && (a || (fileList[i][0]=='.' && fileList[i][1]=='/') || fileList[i][0]!='.')){
 			string absolName = parent + "/" + fileList[i];
 			//cout << "absolName: " << absolName << endl;
 			if(stat(absolName.c_str(), &s)<0){
@@ -256,14 +269,6 @@ void flag_R(vector<string> fileList, string parent, bool a, bool l){
 	}
 }
 
-
-
-
-			
-
-
-
-
 void lsExec(vector<string> cmdFiles, string flags){
 	vector<string> fileList;
 	getFiles(cmdFiles, fileList);
@@ -282,6 +287,9 @@ void lsExec(vector<string> cmdFiles, string flags){
 			flag_R(fileList, ".", true, false);	
 		}
 		else if(hasText(flags, "a") && hasText(flags, "l")){ // -alR
+			flag_l(fileList, true);
+			cout << endl;
+			flag_R(fileList, ".", true, true);
 		}
 		else if(!hasText(flags, "a") && !hasText(flags, "l")){ // -R
 			printVect(fileList, false);
