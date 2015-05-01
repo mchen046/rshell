@@ -16,6 +16,8 @@ gdb:
 	if [ ! -d bin ]; then mkdir bin; fi
 	g++ -std=c++11 -Wall -Werror -pedantic -g ./src/ls.cpp -o bin/ls
 	gdb bin/ls
+Rl: ls
+	bin/ls -Rl
 valgrind:
 	if [ ! -d bin ]; then mkdir bin; fi
 	g++ -std=c++11 -Wall -Werror -pedantic -g ./src/ls.cpp -o bin/ls
