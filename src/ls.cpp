@@ -93,18 +93,6 @@ int lsOrg(vector<string> cmd, vector<string> &cmdFiles, set<char> &cmdFlags){
 	return 1;
 }
 
-/*void sortVect(vector<string> &fileList){
-	vector<string> temp;
-	for(unsigned int i = 0; i<fileList.size(); i++){
-		temp.push_back()
-
-	for(unsigned int i = 0; i<fileList.size(); i++){
-		if(fileList[i][0]=='.'fileList[i][0]>=a){
-			temp.push_back()	*/
-
-
-
-
 void getFiles(string dirString, vector<string> &fileList){
 	DIR *dirp;
 	//converting string to char*
