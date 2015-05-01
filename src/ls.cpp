@@ -31,10 +31,47 @@ https://www.github.com/mchen046/rshell/src/ls.cpp
 using namespace std;
 using namespace boost;
 
+void chop(string text){
+	char_separator<char> delim("/");
+	tokenizer<char_separator<char> >mytok(text, delim);
+	auto it = mytok.begin();
+	for(; it != mytok.end(); it++){
+		auto itA = it;
+		if(++itA==mytok.end()){
+			cout << *it;
+		}
+	}
+}
+
+int fileWidth(vector<string> fileList){
+	unsigned int max = 0;
+
+	for(unsigned i = 0; i<fileList.size(); i++){
+		if(fileList[i].size()>max){
+			max = fileList[i].size();
+		}
+	}
+	return max;
+}
+
 void printVect(vector<string> cmd, bool a){ 
+	int width = fileWidth(cmd);
+	unsigned int j = 0;
+	cout << width << endl;
 	for(unsigned int i = 0; i<cmd.size(); i++){
-		if(a || cmd[i][0]!='.'){
-			cout << cmd[i] << "  ";
+		if(a || (cmd[i][0]=='.' && cmd[i][1]=='/') || cmd[i][0]!='.'){
+			if((j+=width)>80){
+				cout << endl;
+				j = 0;
+			}
+			cout.width(width); cout << left;
+			if(cmd[i][0]=='.'){
+				chop(cmd[i]);
+			}
+			else{
+				cout << cmd[i];
+			}
+			cout << ' ';
 		}
 	}
 	cout << endl;
@@ -127,19 +164,7 @@ void getFiles(string dirString, vector<string> &fileList){
 	sort(fileList.begin(), fileList.end());
 }
 
-void chop(string text){
-	char_separator<char> delim("/");
-	tokenizer<char_separator<char> >mytok(text, delim);
-	auto it = mytok.begin();
-	for(; it != mytok.end(); it++){
-		auto itA = it;
-		if(++itA==mytok.end()){
-			cout << *it;
-		}
-	}
-}
-
-int findLinkSpace(vector<string> fileList, string parent, bool a){
+int linkWidth(vector<string> fileList, string parent, bool a){
 	unsigned int max = 0;
 	struct stat s;
 	string absolName;
@@ -160,7 +185,7 @@ int findLinkSpace(vector<string> fileList, string parent, bool a){
 	return max;
 }
 
-int findSizeSpace(vector<string> fileList, string parent, bool a){
+int sizeWidth(vector<string> fileList, string parent, bool a){
 	unsigned int max = 0;
 	struct stat s;
 	string absolName;
@@ -180,13 +205,14 @@ int findSizeSpace(vector<string> fileList, string parent, bool a){
 	}
 	return max;
 }
+
 void flag_l(vector<string> fileList, string parent, bool a){ //add parent parameter
 	struct stat s;
 	struct passwd *userID;
 	struct group *groupID;
 
-	int maxLinkSpace = findLinkSpace(fileList, parent, a);
-	int maxSizeSpace = findSizeSpace(fileList, parent, a);
+	int linkSpace = linkWidth(fileList, parent, a);
+	int	sizeSpace = sizeWidth(fileList, parent, a);
 
 	//total number of blocks
 	int total = 0;
@@ -229,24 +255,24 @@ void flag_l(vector<string> fileList, string parent, bool a){ //add parent parame
 				<< ' ';
 
 			//number of hard links
-			cout.width(maxLinkSpace); cout << right << s.st_nlink << ' '; 
+			cout.width(linkSpace); cout << right << s.st_nlink << ' '; 
 
 			//userID
-			if(!(userID = getpwuid(s.st_uid))){
+			if(NULL == (userID = getpwuid(s.st_uid))){
 				perror("getpwuid");
 				exit(1);
 			}
 			cout << userID->pw_name << ' ';
 
 			//groupID
-			if(!(groupID = getgrgid(s.st_gid))){
+			if(NULL == (groupID = getgrgid(s.st_gid))){
 				perror("getgrgid");
 				exit(1);
 			}
 			cout << groupID->gr_name << ' ';
 
 			//size of file/dir
-			cout.width(maxSizeSpace); cout << right << s.st_size << ' '; //cout width temporary fix
+			cout.width(sizeSpace); cout << right << s.st_size << ' '; //cout width temporary fix
 
 			//time using struct tm
 			//error check with NULL
@@ -278,6 +304,7 @@ void flag_R(vector<string> fileList, string parent, bool a, bool l){
 			}
 			if(S_IFDIR & s.st_mode){ //is a dir
 				cout << absolName << ':' << endl;
+
 				getFiles(absolName, fileListNew);
 				if(l){
 					flag_l(fileListNew, absolName, a);
@@ -296,15 +323,25 @@ void flag_R(vector<string> fileList, string parent, bool a, bool l){
 void lsExec(vector<string> cmdFiles, string flags){
 	vector<string> fileList;
 	string parent;
-
+	struct stat s;
 	if(cmdFiles.empty()){
 		cmdFiles.push_back(".");
 	}
 
-	for(unsigned int i = 0; i<cmdFiles.size(); i++){
 
-		getFiles(cmdFiles[i], fileList);
+	for(unsigned int i = 0; i<cmdFiles.size(); i++){
+		cout << cmdFiles[i] << endl;
+		if(stat(cmdFiles[i].c_str(), &s)<0){
+			perror("stat");
+		}
 		
+		if(S_IFDIR & s.st_mode){ //only if a dir
+			getFiles(cmdFiles[i], fileList);
+		}
+		else{
+			fileList.push_back(cmdFiles[i]);
+		}
+
 		//cout << "fileList: ";
 		//printVect(fileList, true);
 		//cout << flags << endl;
