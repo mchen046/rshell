@@ -26,6 +26,8 @@ https://www.github.com/mchen046/rshell/src/ls.cpp
 #include <grp.h>
 #include <time.h>
 
+#define STR_SIZE "%7ld "
+
 using namespace std;
 using namespace boost;
 
@@ -69,7 +71,8 @@ bool isText(char* cmdText, string text){
 }
 
 int lsOrg(vector<string> cmd, vector<string> &cmdFiles, set<char> &cmdFlags){
-	for(unsigned int i = 1; i<cmd.size(); i++){
+	for(unsigned int i = 0; i<cmd.size(); i++){
+		//cout << cmd[i] << endl;
 		if(cmd[i][0]=='-'){ //is a flag
 			for(int j = 1; cmd[i][j]!='\0'; j++){
 				if(cmd[i][j]=='a' || cmd[i][j]=='l' || cmd[i][j]=='R'){
@@ -82,10 +85,11 @@ int lsOrg(vector<string> cmd, vector<string> &cmdFiles, set<char> &cmdFlags){
 				}
 			}
 		}
-		else{ //is a file name
+		else{ //is a file/dir name
 			cmdFiles.push_back(cmd[i]);
 		}
 	}
+
 	return 1;
 }
 
@@ -101,42 +105,36 @@ int lsOrg(vector<string> cmd, vector<string> &cmdFiles, set<char> &cmdFlags){
 
 
 
-void getFiles(vector<string> cmdFiles, vector<string> &fileList){
-	if(cmdFiles.empty()){
-		cmdFiles.push_back(".");
+void getFiles(string dirString, vector<string> &fileList){
+	DIR *dirp;
+	//converting string to char*
+	char *dir = new char[dirString.size()+1];
+	for(unsigned int i = 0; i<dirString.size()+1; i++){
+		dir[i] = dirString[i];
+		if(i==dirString.size()){
+			dir[i] = '\0';
+		}
 	}
-	for(unsigned int i = 0; i<cmdFiles.size(); i++){
-		DIR *dirp;
-		//converting string to char*
-		char *dir = new char[cmdFiles[i].size()+1];
-		for(unsigned int j = 0; j<cmdFiles[i].size()+1; j++){
-			dir[j] = cmdFiles[i][j];
-			if(j==cmdFiles[i].size()){
-				dir[j] = '\0';
-			}
-		}
 
-		if(NULL == (dirp = opendir(dir))){
-			cout << "ls: cannot access " << cmdFiles[i] << ": No such file or directory" << endl;
-			perror("opendir");
-		}
+	if(NULL == (dirp = opendir(dir))){
+		cout << "ls: cannot access " << dirString << ": No such file or directory" << endl;
+		perror("opendir");
+	}
 
-		errno = 0;
-		struct dirent *filespecs;
-		while( NULL != (filespecs = readdir(dirp))){
-			//cout << cmdFiles[i] << "/" << filespecs->d_name << endl;
-			fileList.push_back(filespecs->d_name);
-		}
+	errno = 0;
+	struct dirent *filespecs;
+	while( NULL != (filespecs = readdir(dirp))){
+		fileList.push_back(filespecs->d_name);
+	}
 
-		if(errno!=0){
-			perror("readdir");
-			exit(1);
-		}
+	if(errno!=0){
+		perror("readdir");
+		exit(1);
+	}
 
-		if(closedir(dirp) == -1){
-			perror("closedir");
-			exit(1);
-		}
+	if(closedir(dirp) == -1){
+		perror("closedir");
+		exit(1);
 	}
 	sort(fileList.begin(), fileList.end());
 }
@@ -148,24 +146,70 @@ void chop(string text){
 	for(; it != mytok.end(); it++){
 		auto itA = it;
 		if(++itA==mytok.end()){
-			cout << *it << endl;
+			cout << *it;
 		}
 	}
 }
 
+int findLinkSpace(vector<string> fileList, string parent, bool a){
+	unsigned int max = 0;
+	struct stat s;
+	string absolName;
+	
+	for(unsigned i = 0; i<fileList.size(); i++){
+		absolName = parent + '/' + fileList[i];
+		if(a || (fileList[i][0]=='.' && fileList[i][1]=='/') || fileList[i][0]!='.'){
+			if(stat(absolName.c_str(), &s)<0){
+				perror("stat");
+				exit(1);
+			}
 
-void flag_l(vector<string> fileList, bool a){
+			if(to_string(s.st_nlink).size()>max){
+				max = to_string(s.st_nlink).size();
+			}
+		}
+	}
+	return max;
+}
+
+int findSizeSpace(vector<string> fileList, string parent, bool a){
+	unsigned int max = 0;
+	struct stat s;
+	string absolName;
+	
+	for(unsigned i = 0; i<fileList.size(); i++){
+		absolName = parent + '/' + fileList[i];
+		if(a || (fileList[i][0]=='.' && fileList[i][1]=='/') || fileList[i][0]!='.'){
+			if(stat(absolName.c_str(), &s)<0){
+				perror("stat");
+				exit(1);
+			}
+
+			if(to_string(s.st_size).size()>max){
+				max = to_string(s.st_size).size();
+			}
+		}
+	}
+	return max;
+}
+void flag_l(vector<string> fileList, string parent, bool a){ //add parent parameter
 	struct stat s;
 	struct passwd *userID;
 	struct group *groupID;
 
+	int maxLinkSpace = findLinkSpace(fileList, parent, a);
+	int maxSizeSpace = findSizeSpace(fileList, parent, a);
+
 	//total number of blocks
 	int total = 0;
 	//cout << "fileList.size(): " << fileList.size() << endl;
+	
+	string absolName;
 	for(unsigned i  = 0; i<fileList.size(); i++){
+		absolName = parent + '/' + fileList[i];
+		//cout << "absolName: " << absolName << endl;
 		if(a || (fileList[i][0]=='.' && fileList[i][1]=='/') || fileList[i][0]!='.'){
-			//cout << "fileList[" << i << "]: " << fileList[i] << endl;
-			if(stat(fileList[i].c_str(), &s)<0){
+			if(stat(absolName.c_str(), &s)<0){
 				perror("stat");
 				exit(1);
 			}
@@ -175,9 +219,10 @@ void flag_l(vector<string> fileList, bool a){
 	cout << "total " << total/2 << endl;
 
 	for(unsigned int i = 0; i<fileList.size(); i++){
+		absolName = parent + '/' + fileList[i];
 		if(a || (fileList[i][0]=='.' && fileList[i][1]=='/') || fileList[i][0]!='.'){
 			//cout << "fileList[" << i << "]: " << fileList[i] << endl;
-			if(stat(fileList[i].c_str(), &s)<0){
+			if(stat(absolName.c_str(), &s)<0){
 				perror("stat");
 				exit(1);
 			}
@@ -192,10 +237,11 @@ void flag_l(vector<string> fileList, bool a){
 				<< ((S_IXGRP & s.st_mode)?"x":"-")
 				<< ((S_IROTH & s.st_mode)?"r":"-")
 				<< ((S_IWOTH & s.st_mode)?"w":"-")
-				<< ((S_IXOTH & s.st_mode)?"x":"-");
+				<< ((S_IXOTH & s.st_mode)?"x":"-")
+				<< ' ';
 
-			//number of links
-			cout << ' ' << s.st_nlink << ' '; 
+			//number of hard links
+			cout.width(maxLinkSpace); cout << right << s.st_nlink << ' '; 
 
 			//userID
 			if(!(userID = getpwuid(s.st_uid))){
@@ -212,7 +258,7 @@ void flag_l(vector<string> fileList, bool a){
 			cout << groupID->gr_name << ' ';
 
 			//size of file/dir
-			cout.width(4); cout << right << s.st_size << ' '; //cout width temporary fix
+			cout.width(maxSizeSpace); cout << right << s.st_size << ' '; //cout width temporary fix
 
 			//time using struct tm
 			//error check with NULL
@@ -225,6 +271,7 @@ void flag_l(vector<string> fileList, bool a){
 			strftime(date, 15, "%b %d %H:%M", localtime(&(s.st_mtime)));
 			cout << date << ' ';
 			chop(fileList[i]);
+			cout << endl;
 		}
 	}
 }
@@ -232,7 +279,6 @@ void flag_l(vector<string> fileList, bool a){
 void flag_R(vector<string> fileList, string parent, bool a, bool l){
 	struct stat s;
 	vector<string> fileListNew;
-	vector<string> cmdFiles;
 
 	for(unsigned int i = 0; i<fileList.size(); i++){
 		if((fileList[i]!="." && fileList[i]!="..") && (a || (fileList[i][0]=='.' && fileList[i][1]=='/') || fileList[i][0]!='.')){
@@ -244,18 +290,9 @@ void flag_R(vector<string> fileList, string parent, bool a, bool l){
 			}
 			if(S_IFDIR & s.st_mode){ //is a dir
 				cout << absolName << ':' << endl;
-				cmdFiles.push_back(absolName);
-				getFiles(cmdFiles, fileListNew);
+				getFiles(absolName, fileListNew);
 				if(l){
-					vector<string> fileListNew_l;
-					for(unsigned j = 0; j<fileListNew.size(); j++){
-					
-						if(a || (fileListNew[j][0]=='.' && fileListNew[j][1]=='/') || fileListNew[j][0]!='.'){
-							//cout << absolName << "/" << fileListNew[j] << endl;
-							fileListNew_l.push_back(absolName + "/" + fileListNew[j]);
-						}
-					}
-					flag_l(fileListNew_l, a);
+					flag_l(fileListNew, absolName, a);
 				}
 				else{
 					printVect(fileListNew, a);
@@ -265,54 +302,81 @@ void flag_R(vector<string> fileList, string parent, bool a, bool l){
 			}
 		}
 		fileListNew.clear();
-		cmdFiles.clear();
 	}
 }
 
 void lsExec(vector<string> cmdFiles, string flags){
 	vector<string> fileList;
-	getFiles(cmdFiles, fileList);
+	string parent;
 
-	//checking which flags to use
-	if(hasText(flags, "R")){
-		cout << ".:" << endl;
-		if(hasText(flags, "l") && !hasText(flags, "a")){ // -lR
-			flag_l(fileList, false);
-			cout << endl;
-			flag_R(fileList, ".", false, true);	
+	if(cmdFiles.empty()){
+		cmdFiles.push_back(".");
+	}
+
+	for(unsigned int i = 0; i<cmdFiles.size(); i++){
+
+		getFiles(cmdFiles[i], fileList);
+		
+		//cout << "fileList: ";
+		//printVect(fileList, true);
+		//cout << flags << endl;
+
+		if(fileList.empty()){
+			parent = ".";
 		}
-		else if(hasText(flags, "a") && !hasText(flags, "l")){ // -aR
+		else{
+			parent = cmdFiles[i];
+		}
+
+		if(cmdFiles.size()!=1 || hasText(flags, "R")){
+			cout << parent << ':' << endl;
+		}
+
+		//checking which flags to use
+		if(hasText(flags, "R")){
+				if(hasText(flags, "l") && !hasText(flags, "a")){ // -lR
+				flag_l(fileList, parent, false);
+				cout << endl;
+				flag_R(fileList, parent, false, true);	
+			}
+			else if(hasText(flags, "a") && !hasText(flags, "l")){ // -aR
+				printVect(fileList, true);
+				cout << endl;
+				flag_R(fileList, parent, true, false);	
+			}
+			else if(hasText(flags, "a") && hasText(flags, "l")){ // -alR
+				flag_l(fileList, parent, true);
+				cout << endl;
+				flag_R(fileList, parent, true, true);
+			}
+			else if(!hasText(flags, "a") && !hasText(flags, "l")){ // -R
+				printVect(fileList, false);
+				//cout << endl;
+				flag_R(fileList, parent, false, false);
+			}
+		}
+		else if(hasText(flags, "l") && !hasText(flags, "a")){ // -l
+			flag_l(fileList, parent, false);
+		}
+		else if(hasText(flags, "a") && !hasText(flags, "l")){ // -a
 			printVect(fileList, true);
-			cout << endl;
-			flag_R(fileList, ".", true, false);	
 		}
-		else if(hasText(flags, "a") && hasText(flags, "l")){ // -alR
-			flag_l(fileList, true);
-			cout << endl;
-			flag_R(fileList, ".", true, true);
+		else if(hasText(flags, "a") && hasText(flags, "l")){ // -la
+			flag_l(fileList, parent, true);
 		}
-		else if(!hasText(flags, "a") && !hasText(flags, "l")){ // -R
+		else if(!hasText(flags, "a") && !hasText(flags, "l") && !hasText(flags, "R")){ // ls
 			printVect(fileList, false);
-			cout << endl;
-			flag_R(fileList, ".", false, false);
 		}
-	}
-	else if(hasText(flags, "l") && !hasText(flags, "a")){ // -l
-		flag_l(fileList, false);
-	}
-	else if(hasText(flags, "a") && !hasText(flags, "l")){ // -a
-		printVect(fileList, true);
-	}
-	else if(hasText(flags, "a") && hasText(flags, "l")){ // -la
-		flag_l(fileList, true);
-	}
-	else if(!hasText(flags, "a") && !hasText(flags, "l") && !hasText(flags, "R")){ // ls
-		printVect(fileList, false);
+		fileList.clear();
+		if(i+1 != cmdFiles.size()){
+			cout << endl;
+		}
 	}
 }
 
 int ls(vector<string> cmd){
 	//conduct error checking here
+
 
 	vector<string> cmdFiles;
 	set<char> cmdFlags;
@@ -320,10 +384,15 @@ int ls(vector<string> cmd){
 		return -1;
 	}
 
-	//printVect(cmdFiles);
-	/*for(auto it = cmdFlags.begin(); it!=cmdFlags.end(); it++){
+	cout << "cmdFiles: ";
+	printVect(cmdFiles, true);
+	cout << "flags: ";
+	for(auto it = cmdFlags.begin(); it!=cmdFlags.end(); it++){
 		cout << *it << endl;
-	}*/
+	}
+	cout << endl;
+
+
 	
 	//converting set<char> to string
 	string flags;
@@ -337,8 +406,14 @@ int ls(vector<string> cmd){
 }
 int main(int argc, char** argv){
 	vector<string> cmd;
-	for(int i = 0; i<argc; i++){
-		cmd.push_back(argv[i]);
+	for(int i = 1; i<argc; i++){
+		//cout << argv[i] << endl;
+		if(argv[i][0]!='.' && argv[i][0]!='/' && argv[i][0]!='-'){
+			cmd.push_back("./" + static_cast<string>(argv[i]));
+		}
+		else{
+			cmd.push_back(argv[i]);
+		}
 	}
 
 	ls(cmd);
