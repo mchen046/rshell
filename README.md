@@ -96,6 +96,9 @@ Commands still follow normal connector logic:
 - If a command is followed by `||`, then the next command is executed only if the first one failed.
 - If a command is followed by `&&`, then the next command is executed only if the first one succeeded.
 - If a command is followed by `;`, then the next command is always executed.
+--------------------------------------------------------------------------------
+ls -l / displays years on some timestamps instead of the H:M:s format
+ls -l displays 08 instead of 8 on day of month
 
 
 
