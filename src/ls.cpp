@@ -26,19 +26,51 @@ https://www.github.com/mchen046/rshell/src/ls.cpp
 #include <grp.h>
 #include <time.h>
 
-#define STR_SIZE "%7ld "
+#define RESET   "\033[0m"
+#define BLACK   "\033[30m"      /* Black */
+#define RED     "\033[31m"      /* Red */
+#define GREEN   "\033[32m"      /* Green */
+#define YELLOW  "\033[33m"      /* Yellow */
+#define BLUE    "\033[34m"      /* Blue */
+#define MAGENTA "\033[35m"      /* Magenta */
+#define CYAN    "\033[36m"      /* Cyan */
+#define WHITE   "\033[37m"      /* White */
+#define BOLDBLACK   "\033[1m\033[30m"      /* Bold Black */
+#define BOLDRED     "\033[1m\033[31m"      /* Bold Red */
+#define BOLDGREEN   "\033[1m\033[32m"      /* Bold Green */
+#define BOLDYELLOW  "\033[1m\033[33m"      /* Bold Yellow */
+#define BOLDBLUE    "\033[1m\033[34m"      /* Bold Blue */
+#define BOLDMAGENTA "\033[1m\033[35m"      /* Bold Magenta */
+#define BOLDCYAN    "\033[1m\033[36m"      /* Bold Cyan */
+#define BOLDWHITE   "\033[1m\033[37m"      /* Bold White */
+#define GREYBG	"\033[1;40m" /* GREY BACKGROUND */ 
 
 using namespace std;
 using namespace boost;
 
-void chop(string text){
+void chop(string text, bool d, bool e, int width){
 	char_separator<char> delim("/");
 	tokenizer<char_separator<char> >mytok(text, delim);
 	auto it = mytok.begin();
 	for(; it != mytok.end(); it++){
 		auto itA = it;
+		//cout << *it << endl;
 		if(++itA==mytok.end()){
+			if(static_cast<string>(*it)[0]=='.'){
+				cout << GREYBG;
+			}			
+			if(d){
+				cout << BOLDBLUE;
+			}
+			else if(e){
+				cout << BOLDGREEN;
+			}
+
+		
+
+			cout.width(width); 
 			cout << *it;
+			cout << RESET;
 		}
 	}
 }
@@ -54,22 +86,45 @@ int fileWidth(vector<string> fileList){
 	return max;
 }
 
-void printVect(vector<string> cmd, bool a){ 
+void printVect(vector<string> cmd, string parent, bool a){
+	struct stat s;
 	int width = fileWidth(cmd);
+	//cout << "width: " << width << endl;
 	unsigned int j = 0;
-	cout << width << endl;
+	string absolName;
 	for(unsigned int i = 0; i<cmd.size(); i++){
 		if(a || (cmd[i][0]=='.' && cmd[i][1]=='/') || cmd[i][0]!='.'){
+			absolName = parent + '/' + cmd[i];
+			if(stat(absolName.c_str(), &s)<0){
+				perror("stat");
+				exit(1);
+			}
+
 			if((j+=width)>80){
 				cout << endl;
 				j = 0;
 			}
-			cout.width(width); cout << left;
-			if(cmd[i][0]=='.'){
-				chop(cmd[i]);
+			cout << left;
+			
+			bool d = false, e = false;
+			if(S_IFDIR & s.st_mode){
+				d = true;
+			}
+			else if(S_IEXEC & s.st_mode){
+				e = true;
+			}
+			if(absolName[0]=='.' || absolName[0]== '/'){
+				chop(absolName, d, e, width);
 			}
 			else{
-				cout << cmd[i];
+				if(d){
+					cout << BOLDBLUE;
+				}
+				else if(e){
+					cout <<  BOLDGREEN;
+				}
+				cout.width(width); cout << cmd[i];
+				cout << RESET;
 			}
 			cout << ' ';
 		}
@@ -232,6 +287,8 @@ void flag_l(vector<string> fileList, string parent, bool a){ //add parent parame
 	}
 	cout << "total " << total/2 << endl;
 
+	int width = fileWidth(fileList);
+
 	for(unsigned int i = 0; i<fileList.size(); i++){
 		absolName = parent + '/' + fileList[i];
 		if(a || (fileList[i][0]=='.' && fileList[i][1]=='/') || fileList[i][0]!='.'){
@@ -284,7 +341,17 @@ void flag_l(vector<string> fileList, string parent, bool a){ //add parent parame
 			}
 			strftime(date, 15, "%b %d %H:%M", localtime(&(s.st_mtime)));
 			cout << date << ' ';
-			chop(fileList[i]);
+
+			bool d = false, e = false;
+			if(S_IFDIR & s.st_mode){
+				d = true;
+			}
+			else if(S_IEXEC & s.st_mode){
+				e = true;
+			}
+
+			
+			chop(fileList[i], d, e, width);
 			cout << endl;
 		}
 	}
@@ -310,7 +377,7 @@ void flag_R(vector<string> fileList, string parent, bool a, bool l){
 					flag_l(fileListNew, absolName, a);
 				}
 				else{
-					printVect(fileListNew, a);
+					printVect(fileListNew, parent, a);
 				}
 				cout << endl;
 				flag_R(fileListNew, absolName, a, l);
@@ -330,7 +397,7 @@ void lsExec(vector<string> cmdFiles, string flags){
 
 
 	for(unsigned int i = 0; i<cmdFiles.size(); i++){
-		cout << cmdFiles[i] << endl;
+		//cout << cmdFiles[i] << endl;
 		if(stat(cmdFiles[i].c_str(), &s)<0){
 			perror("stat");
 		}
@@ -365,7 +432,7 @@ void lsExec(vector<string> cmdFiles, string flags){
 				flag_R(fileList, parent, false, true);	
 			}
 			else if(hasText(flags, "a") && !hasText(flags, "l")){ // -aR
-				printVect(fileList, true);
+				printVect(fileList, parent, true);
 				cout << endl;
 				flag_R(fileList, parent, true, false);	
 			}
@@ -375,7 +442,7 @@ void lsExec(vector<string> cmdFiles, string flags){
 				flag_R(fileList, parent, true, true);
 			}
 			else if(!hasText(flags, "a") && !hasText(flags, "l")){ // -R
-				printVect(fileList, false);
+				printVect(fileList, parent, false);
 				//cout << endl;
 				flag_R(fileList, parent, false, false);
 			}
@@ -384,13 +451,13 @@ void lsExec(vector<string> cmdFiles, string flags){
 			flag_l(fileList, parent, false);
 		}
 		else if(hasText(flags, "a") && !hasText(flags, "l")){ // -a
-			printVect(fileList, true);
+			printVect(fileList, parent, true);
 		}
 		else if(hasText(flags, "a") && hasText(flags, "l")){ // -la
 			flag_l(fileList, parent, true);
 		}
 		else if(!hasText(flags, "a") && !hasText(flags, "l") && !hasText(flags, "R")){ // ls
-			printVect(fileList, false);
+			printVect(fileList, parent, false);
 		}
 		fileList.clear();
 		if(i+1 != cmdFiles.size()){
@@ -409,13 +476,13 @@ int ls(vector<string> cmd){
 		return -1;
 	}
 
-	cout << "cmdFiles: ";
-	printVect(cmdFiles, true);
-	cout << "flags: ";
-	for(auto it = cmdFlags.begin(); it!=cmdFlags.end(); it++){
-		cout << *it << endl;
-	}
-	cout << endl;
+	//cout << "cmdFiles: ";
+	//printVect(cmdFiles, true);
+	//cout << "flags: ";
+	//for(auto it = cmdFlags.begin(); it!=cmdFlags.end(); it++){
+	//	cout << *it << endl;
+	//}
+	//cout << endl;
 
 
 	
