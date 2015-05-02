@@ -266,13 +266,14 @@ void flag_l(vector<string> fileList, string parent, bool a){ //add parent parame
 	for(unsigned int i = 0; i<fileList.size(); i++){
 		absolName = parent + '/' + fileList[i];
 		if(a || (fileList[i][0]=='.' && fileList[i][1]=='/') || fileList[i][0]!='.'){
-			if(stat(absolName.c_str(), &s)<0){
+			if(lstat(absolName.c_str(), &s)<0){
 				perror("stat");
 				exit(1);
 			}
 			
 			//permissions
-			cout << ((S_IFDIR & s.st_mode)?"d":"-")
+			cout << (((S_ISDIR(s.st_mode)) || (S_ISCHR(s.st_mode)) || (S_ISBLK(s.st_mode)) || (S_ISLNK(s.st_mode)))?"":"-")
+				<< ((S_ISLNK(s.st_mode))?"l":((S_ISDIR(s.st_mode))?"d": ((S_ISBLK(s.st_mode))?"b":((S_ISCHR(s.st_mode))?"c":""))))
 				<< ((S_IRUSR & s.st_mode)?"r":"-")
 				<< ((S_IWUSR & s.st_mode)?"w":"-")
 				<< ((S_IXUSR & s.st_mode)?"x":"-")
@@ -312,7 +313,7 @@ void flag_l(vector<string> fileList, string parent, bool a){ //add parent parame
 				perror("localtime");
 				exit(1);
 			}
-			strftime(date, 15, "%b %d %H:%M", localtime(&(s.st_mtime)));
+			strftime(date, 15, "%b %e %H:%M", localtime(&(s.st_mtime)));
 			cout << date << ' ';
 
 			bool d = false, e = false;
