@@ -472,7 +472,7 @@ void ls(vector<string> cmd){
 	vector<string> cmdFiles;
 	set<char> cmdFlags;
 	if(lsOrg(cmd, cmdFiles, cmdFlags)==-1){
-		return -1;
+		exit(1);
 	}
 	
 	//converting set<char> to string
@@ -481,25 +481,34 @@ void ls(vector<string> cmd){
 		flags.push_back(*it);
 	}
 
-	//output error message
-	for(unsigned int i = 0; i<cmdFiles.size(); i++){
-		if(!exists(cmdFiles[i])){
-			char_separator<char> delim("/");
-			tokenizer<char_separator<char> >mytok(cmdFiles[i], delim);
-			for(auto it = mytok.begin(); it!=mytok.end(); it++){
-				auto itA = it;
-				if(++itA==mytok.end()){
-					cout << "ls: cannot access " << *it << ": No such file or directory" << endl;
-				}
-			}
-		}
-	}
-	lsExec(cmdFiles, flags);
+		lsExec(cmdFiles, flags);
 }
 int main(int argc, char** argv){
 	vector<string> cmd;
 	for(int i = 1; i<argc; i++){
 		//cout << argv[i] << endl;
+
+		//output error message
+		if(argv[i][0]!='-'){
+			if(!exists(static_cast<string>(argv[i]))){
+				string file;
+				if(argv[i][0]!='/' && argv[i][0]!='.' && argv[i][1]!='/'){
+					char_separator<char> delim("/");
+					tokenizer<char_separator<char> >mytok(static_cast<string>(argv[i]), delim);
+					for(auto it = mytok.begin(); it!=mytok.end(); it++){
+						auto itA = it;
+						if(++itA==mytok.end()){
+							file = *it;
+						}
+					}
+				}
+				else{
+					file = argv[i];
+				}
+				cout << "ls: cannot access " << file << ": No such file or directory" << endl;
+			}
+		}
+
 		if(argv[i][0]!='.' && argv[i][0]!='/' && argv[i][0]!='-'){
 			cmd.push_back("./" + static_cast<string>(argv[i]));
 		}
@@ -507,8 +516,6 @@ int main(int argc, char** argv){
 			cmd.push_back(argv[i]);
 		}
 	}
-
 	ls(cmd);
-	
 	return 0;
 }
