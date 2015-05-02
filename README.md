@@ -12,7 +12,7 @@ $ git checkout hw0
 $ make
 $ bin/rshell
 ```
-### Bugs/Limitations/Issues
+### Bugs/Limitations/Issues for rshell
 **1. commands with a single &**
 
 `$ echo hello & echo world` 
@@ -97,6 +97,40 @@ Commands still follow normal connector logic:
 - If a command is followed by `&&`, then the next command is executed only if the first one succeeded.
 - If a command is followed by `;`, then the next command is always executed.
 
+### Bugs/Limitations/Issues for the ls command
 
+**1. `do_ypcall: clnt_call: RPC: Unable to send; errno = Operation not permitted`**
 
+`ls -laR` seems to causes the error `do_ypcall: clnt_call: RPC: Unable to send; errno = Operation not permitted` on large/hidden files such as `.git` where the -R flag accesses some directories/files where read permission is not allowed.
 
+**2. display order**
+
+GNU ls displays files and directories in an order that first prints the `.` and `..` folders, then disregards whether or not the file is hidden or not; the non-case sensitive letter takes precedence, then the lower case letter, then the upper case letter.
+
+The implemented subpart of the GNU ls command orders files and directories by ascii-betical algorithm; hidden folders take precedence, then upper case letters, and finally lower case letters.
+
+**3. column width**
+
+GNU ls is able to dynamically determine the width of a column based on the width of the current open terminal window.
+
+The implemented subpart of the GNU ls command is set to a standard width of 80 characters.
+
+**4. extra/missing new lines**
+
+Various combinations of the `-l -a -R` flags impede proper newline placement between file and directory listings.
+
+**5. symbolic links**
+
+The implemented subpart of the GNU ls command is not able to display `->` for the parent link of symbolic links in the `-l` flag
+
+**6. year and time display**
+
+GNU ls occasionaly prints a files last modification date in the `month date time` format in the `-l` flag.
+
+The implemented subpart of the GNU ls command only prints in the `month date time` format for the `-l` flag.  
+
+**7. executing ls on an existing file**
+
+When ls is called on an existing file, GNU ls prints out the file's path.
+
+The implemented subpart of the GNU ls command is not able to execute on an existing file.

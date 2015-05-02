@@ -127,6 +127,11 @@ char** parseSpace(char *cmd){
 
 int execCmd(char** cmdD){ //process spawning
 	if(exitSeen){
+		//deallocate cmdD
+		for(int i = 0; cmdD[i]!=NULL; i++){
+			delete[] cmdD[i];
+		}
+		delete[] cmdD;		
 		return -1;
 	}
 	exitSeen = false;
@@ -155,6 +160,13 @@ int execCmd(char** cmdD){ //process spawning
 		//cout << "command fails!\n";
 		return -1;
 	}
+
+	//deallocate cmdD
+	for(int i = 0; cmdD[i]!=NULL; i++){
+		delete[] cmdD[i];
+	}
+	delete[] cmdD;
+	
 	return status; //status defaults to 0 if successful
 }
 
@@ -175,7 +187,7 @@ void parseDelim(vector<char*> &cmdC, char *cmdB, char const * delim, char **ptr)
 int cAND(vector<char*> &cmdC, char *cmdB, char **ptr){ //parse and execute && command
 	parseDelim(cmdC, cmdB, "&&", &*ptr);
 	int success = 1;
-	for(unsigned int i = 0; i<cmdC.size() && success; i++){
+	for(unsigned int i = 0; i<cmdC.size() && success!=-1; i++){
 		if(execCmd(parseSpace(cmdC[i]))==-1){ //command fails
 			success = -1;
 		}
@@ -193,6 +205,16 @@ int cOR(vector<char*> &cmdC, char *cmdB, char **ptr){ //parse and execute || com
 	}
 	return success;
 }
+
+bool onlySpace(string str){
+	for(unsigned int i = 0; i<str.size(); i++){
+		if(str.at(i)!=' '){
+			return false;
+		}
+	}
+	return true;
+}
+
 
 bool checkConnector(string cmd, string &stringToken){
 	bool valid = true;
@@ -351,7 +373,9 @@ void parseMaster(char* cmdB){
 			delete[] cmdBX;
 		}
 	}
+	cmdC.clear();
 }
+
 int main(){
 	while(1){
 		string cmd, cmd2, stringToken;
@@ -370,7 +394,6 @@ int main(){
 				i=cmd.size();
 			}
 		}
-	
 		/*
 		//check for invalid instances of && and ||
 		if(!checkConnector(cmd2, stringToken)){
@@ -378,12 +401,12 @@ int main(){
 			cmd2 = "";
 		}
 		*/	
-		if(cmd2!=""){ //if command is not empty
+		if(cmd2!="" && !onlySpace(cmd2)){ //if command is not empty
 			//convert string to char*
 			char *cmdA = new char[cmd2.size()+1];
 			for(int i = 0; i<static_cast<int>(cmd2.size()); i++){
 				cmdA[i] = cmd2.at(i);
-				if(i+1==static_cast<int>(cmd.size())){
+				if(i+1==static_cast<int>(cmd2.size())){
 					cmdA[i+1] = '\0'; //null terminating
 				}
 			}
@@ -392,7 +415,6 @@ int main(){
 
 			bool cmdBDone = false;
 			while(!cmdBDone){
-				//cout << "cmdB: " << cmdB << endl;
 				parseMaster(cmdB);	
 				cmdB = strtok(NULL, ";");
 				if(cmdB==NULL){
