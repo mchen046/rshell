@@ -38,8 +38,7 @@ using namespace boost;
 void chop(string text, bool d, bool e, int width){
 	char_separator<char> delim("/");
 	tokenizer<char_separator<char> >mytok(text, delim);
-	auto it = mytok.begin();
-	for(; it != mytok.end(); it++){
+	for(auto it = mytok.begin(); it != mytok.end(); it++){
 		auto itA = it;
 		//cout << *it << endl;
 		if(++itA==mytok.end()){
@@ -52,12 +51,7 @@ void chop(string text, bool d, bool e, int width){
 			else if(e){
 				cout << BOLDGREEN;
 			}
-
-		
-
-			cout.width(width); 
-			cout << *it;
-			cout << RESET;
+			cout.width(width); cout << *it << RESET;
 		}
 	}
 }
@@ -87,13 +81,11 @@ void printVect(vector<string> cmd, string parent, bool a){
 				perror("stat");
 				exit(1);
 			}
-
 			if((j+=width)>80){
 				cout << endl;
 				j = 0;
 			}
 			cout << left;
-			
 			bool d = false, e = false;
 			if(S_IFDIR & s.st_mode){
 				d = true;
@@ -111,8 +103,7 @@ void printVect(vector<string> cmd, string parent, bool a){
 				else if(e){
 					cout <<  BOLDGREEN;
 				}
-				cout.width(width); cout << cmd[i];
-				cout << RESET;
+				cout.width(width); cout << cmd[i] << RESET;
 			}
 			cout << ' ';
 		}
@@ -183,31 +174,25 @@ void getFiles(string dirString, vector<string> &fileList){
 			dir[i] = '\0';
 		}
 	}
-
 	if(NULL == (dirp = opendir(dir))){
 		cout << "ls: cannot access " << dirString << ": No such file or directory" << endl;
 		perror("opendir");
 	}
-
 	errno = 0;
 	struct dirent *filespecs;
 	while( NULL != (filespecs = readdir(dirp))){
-		//cout << "filespecs->d_name " << filespecs->d_name << endl;
 		fileList.push_back(filespecs->d_name);
 	}
-
 	if(errno!=0){
 		perror("readdir");
 		exit(1);
 	}
-
 	if(closedir(dirp) == -1){
 		perror("closedir");
 		exit(1);
 	}
+	delete[] dir;
 	sort(fileList.begin(), fileList.end());
-	//cout << "fileListNew: ";
-	//printVect(fileList, dirString, true);
 }
 
 int linkWidth(vector<string> fileList, string parent, bool a){
@@ -262,8 +247,6 @@ void flag_l(vector<string> fileList, string parent, bool a){ //add parent parame
 
 	//total number of blocks
 	int total = 0;
-	//cout << "fileList.size(): " << fileList.size() << endl;
-	
 	string absolName;
 	for(unsigned i  = 0; i<fileList.size(); i++){
 		absolName = parent + '/' + fileList[i];
@@ -283,7 +266,6 @@ void flag_l(vector<string> fileList, string parent, bool a){ //add parent parame
 	for(unsigned int i = 0; i<fileList.size(); i++){
 		absolName = parent + '/' + fileList[i];
 		if(a || (fileList[i][0]=='.' && fileList[i][1]=='/') || fileList[i][0]!='.'){
-			//cout << "fileList[" << i << "]: " << fileList[i] << endl;
 			if(stat(absolName.c_str(), &s)<0){
 				perror("stat");
 				exit(1);
@@ -324,7 +306,6 @@ void flag_l(vector<string> fileList, string parent, bool a){ //add parent parame
 			
 			cout << left;
 			//time using struct tm
-			//error check with NULL
 			char date[15];
 			struct tm *timeInfo;
 			if(NULL == (timeInfo = localtime(&(s.st_mtime)))){
@@ -341,8 +322,6 @@ void flag_l(vector<string> fileList, string parent, bool a){ //add parent parame
 			else if(S_IEXEC & s.st_mode){
 				e = true;
 			}
-
-			
 			chop(fileList[i], d, e, width);
 			cout << endl;
 		}
@@ -382,6 +361,33 @@ void flag_R(vector<string> fileList, string parent, bool a, bool l){
 	}
 }
 
+bool exists(const string file){
+	//check if file or dir exists
+	DIR *dirp;
+	//converting string to char*
+	char *dir = new char[file.size()+1];
+	for(unsigned int j = 0; j<file.size()+1; j++){
+		dir[j] = file[j];
+		if(j==file.size()){
+			dir[j] = '\0';
+		}
+	}
+
+	if(NULL == (dirp = opendir(dir))){
+		//cout << "ls: cannot access " << file << ": No such file or directory" << endl;
+		//perror("opendir");
+		return false;
+	}
+
+	if(closedir(dirp) == -1){
+		perror("closedir");
+		exit(1);
+	}
+	delete[] dir;
+	return true;
+}
+
+
 void lsExec(vector<string> cmdFiles, string flags){
 	vector<string> fileList;
 	string parent;
@@ -390,75 +396,76 @@ void lsExec(vector<string> cmdFiles, string flags){
 		cmdFiles.push_back(".");
 	}
 
-
 	for(unsigned int i = 0; i<cmdFiles.size(); i++){
 		//cout << cmdFiles[i] << endl;
-		if(stat(cmdFiles[i].c_str(), &s)<0){
-			perror("stat");
-		}
-		
-		if(S_IFDIR & s.st_mode){ //only if a dir
-			getFiles(cmdFiles[i], fileList);
-		}
-		else{
-			fileList.push_back(cmdFiles[i]);
-		}
+	
 
-		
-		if(fileList.empty()){
-			parent = ".";
-		}
-		else{
-			parent = cmdFiles[i];
-		}
+		if(exists(cmdFiles[i])){
+			if(stat(cmdFiles[i].c_str(), &s)<0){
+				perror("stat");
+			}
+			if(S_IFDIR & s.st_mode){ //only if a dir
+				getFiles(cmdFiles[i], fileList);
+			}
+			else{
+				fileList.push_back(cmdFiles[i]);
+			
+			}
+			if(fileList.empty()){
+				parent = ".";
+			}
+			else{
+				parent = cmdFiles[i];
+			}
 
-		if(cmdFiles.size()!=1 || hasText(flags, "R")){
-			cout << parent << ':' << endl;
-		}
-		
-		//checking which flags to use
-		if(hasText(flags, "R")){
-			if(hasText(flags, "l") && !hasText(flags, "a")){ // -lR
+			if(cmdFiles.size()!=1 || hasText(flags, "R")){
+				cout << parent << ':' << endl;
+			}
+			
+			//checking which flags to use
+			if(hasText(flags, "R")){
+				if(hasText(flags, "l") && !hasText(flags, "a")){ // -lR
+					flag_l(fileList, parent, false);
+					cout << endl;
+					flag_R(fileList, parent, false, true);	
+				}
+				else if(hasText(flags, "a") && !hasText(flags, "l")){ // -aR
+					printVect(fileList, parent, true);
+					cout << endl;
+					flag_R(fileList, parent, true, false);	
+				}
+				else if(hasText(flags, "a") && hasText(flags, "l")){ // -alR
+					flag_l(fileList, parent, true);
+					cout << endl;
+					flag_R(fileList, parent, true, true);
+				}
+				else if(!hasText(flags, "a") && !hasText(flags, "l")){ // -R
+					printVect(fileList, parent, false);
+					cout << endl;
+					flag_R(fileList, parent, false, false);
+				}
+			}
+			else if(hasText(flags, "l") && !hasText(flags, "a")){ // -l
 				flag_l(fileList, parent, false);
-				cout << endl;
-				flag_R(fileList, parent, false, true);	
 			}
-			else if(hasText(flags, "a") && !hasText(flags, "l")){ // -aR
+			else if(hasText(flags, "a") && !hasText(flags, "l")){ // -a
 				printVect(fileList, parent, true);
-				cout << endl;
-				flag_R(fileList, parent, true, false);	
 			}
-			else if(hasText(flags, "a") && hasText(flags, "l")){ // -alR
+			else if(hasText(flags, "a") && hasText(flags, "l")){ // -la
 				flag_l(fileList, parent, true);
-				cout << endl;
-				flag_R(fileList, parent, true, true);
 			}
-			else if(!hasText(flags, "a") && !hasText(flags, "l")){ // -R
+			else if(!hasText(flags, "a") && !hasText(flags, "l") && !hasText(flags, "R")){ // ls
 				printVect(fileList, parent, false);
-				cout << endl;
-				flag_R(fileList, parent, false, false);
 			}
-		}
-		else if(hasText(flags, "l") && !hasText(flags, "a")){ // -l
-			flag_l(fileList, parent, false);
-		}
-		else if(hasText(flags, "a") && !hasText(flags, "l")){ // -a
-			printVect(fileList, parent, true);
-		}
-		else if(hasText(flags, "a") && hasText(flags, "l")){ // -la
-			flag_l(fileList, parent, true);
-		}
-		else if(!hasText(flags, "a") && !hasText(flags, "l") && !hasText(flags, "R")){ // ls
-			printVect(fileList, parent, false);
-		}
-		fileList.clear();
-		if(i+1 != cmdFiles.size()){
-			cout << endl;
+			fileList.clear();
+			if(i+1 != cmdFiles.size()){
+				cout << endl;
+			}
 		}
 	}
 }
 
-int ls(vector<string> cmd){
+void ls(vector<string> cmd){
 	//conduct error checking here
 
 
@@ -467,16 +474,6 @@ int ls(vector<string> cmd){
 	if(lsOrg(cmd, cmdFiles, cmdFlags)==-1){
 		return -1;
 	}
-
-	//cout << "cmdFiles: ";
-	//printVect(cmdFiles, true);
-	//cout << "flags: ";
-	//for(auto it = cmdFlags.begin(); it!=cmdFlags.end(); it++){
-	//	cout << *it << endl;
-	//}
-	//cout << endl;
-
-
 	
 	//converting set<char> to string
 	string flags;
@@ -484,9 +481,20 @@ int ls(vector<string> cmd){
 		flags.push_back(*it);
 	}
 
+	//output error message
+	for(unsigned int i = 0; i<cmdFiles.size(); i++){
+		if(!exists(cmdFiles[i])){
+			char_separator<char> delim("/");
+			tokenizer<char_separator<char> >mytok(cmdFiles[i], delim);
+			for(auto it = mytok.begin(); it!=mytok.end(); it++){
+				auto itA = it;
+				if(++itA==mytok.end()){
+					cout << "ls: cannot access " << *it << ": No such file or directory" << endl;
+				}
+			}
+		}
+	}
 	lsExec(cmdFiles, flags);
-
-	return 1;
 }
 int main(int argc, char** argv){
 	vector<string> cmd;
