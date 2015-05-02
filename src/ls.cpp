@@ -27,22 +27,9 @@ https://www.github.com/mchen046/rshell/src/ls.cpp
 #include <time.h>
 
 #define RESET   "\033[0m"
-#define BLACK   "\033[30m"      /* Black */
-#define RED     "\033[31m"      /* Red */
-#define GREEN   "\033[32m"      /* Green */
-#define YELLOW  "\033[33m"      /* Yellow */
-#define BLUE    "\033[34m"      /* Blue */
-#define MAGENTA "\033[35m"      /* Magenta */
-#define CYAN    "\033[36m"      /* Cyan */
-#define WHITE   "\033[37m"      /* White */
 #define BOLDBLACK   "\033[1m\033[30m"      /* Bold Black */
-#define BOLDRED     "\033[1m\033[31m"      /* Bold Red */
 #define BOLDGREEN   "\033[1m\033[32m"      /* Bold Green */
-#define BOLDYELLOW  "\033[1m\033[33m"      /* Bold Yellow */
 #define BOLDBLUE    "\033[1m\033[34m"      /* Bold Blue */
-#define BOLDMAGENTA "\033[1m\033[35m"      /* Bold Magenta */
-#define BOLDCYAN    "\033[1m\033[36m"      /* Bold Cyan */
-#define BOLDWHITE   "\033[1m\033[37m"      /* Bold White */
 #define GREYBG	"\033[1;40m" /* GREY BACKGROUND */ 
 
 using namespace std;
@@ -95,6 +82,7 @@ void printVect(vector<string> cmd, string parent, bool a){
 	for(unsigned int i = 0; i<cmd.size(); i++){
 		if(a || (cmd[i][0]=='.' && cmd[i][1]=='/') || cmd[i][0]!='.'){
 			absolName = parent + '/' + cmd[i];
+			//cout << "absolName: " << absolName << endl;
 			if(stat(absolName.c_str(), &s)<0){
 				perror("stat");
 				exit(1);
@@ -204,6 +192,7 @@ void getFiles(string dirString, vector<string> &fileList){
 	errno = 0;
 	struct dirent *filespecs;
 	while( NULL != (filespecs = readdir(dirp))){
+		//cout << "filespecs->d_name " << filespecs->d_name << endl;
 		fileList.push_back(filespecs->d_name);
 	}
 
@@ -217,6 +206,8 @@ void getFiles(string dirString, vector<string> &fileList){
 		exit(1);
 	}
 	sort(fileList.begin(), fileList.end());
+	//cout << "fileListNew: ";
+	//printVect(fileList, dirString, true);
 }
 
 int linkWidth(vector<string> fileList, string parent, bool a){
@@ -329,8 +320,9 @@ void flag_l(vector<string> fileList, string parent, bool a){ //add parent parame
 			cout << groupID->gr_name << ' ';
 
 			//size of file/dir
-			cout.width(sizeSpace); cout << right << s.st_size << ' '; //cout width temporary fix
-
+			cout.width(sizeSpace); cout << right << s.st_size << ' ';
+			
+			cout << left;
 			//time using struct tm
 			//error check with NULL
 			char date[15];
@@ -373,13 +365,16 @@ void flag_R(vector<string> fileList, string parent, bool a, bool l){
 				cout << absolName << ':' << endl;
 
 				getFiles(absolName, fileListNew);
+
 				if(l){
 					flag_l(fileListNew, absolName, a);
 				}
 				else{
-					printVect(fileListNew, parent, a);
+					printVect(fileListNew, absolName, a);
 				}
-				cout << endl;
+				if(i+1!=fileList.size()){
+					cout << endl;
+				}
 				flag_R(fileListNew, absolName, a, l);
 			}
 		}
@@ -409,10 +404,7 @@ void lsExec(vector<string> cmdFiles, string flags){
 			fileList.push_back(cmdFiles[i]);
 		}
 
-		//cout << "fileList: ";
-		//printVect(fileList, true);
-		//cout << flags << endl;
-
+		
 		if(fileList.empty()){
 			parent = ".";
 		}
@@ -423,10 +415,10 @@ void lsExec(vector<string> cmdFiles, string flags){
 		if(cmdFiles.size()!=1 || hasText(flags, "R")){
 			cout << parent << ':' << endl;
 		}
-
+		
 		//checking which flags to use
 		if(hasText(flags, "R")){
-				if(hasText(flags, "l") && !hasText(flags, "a")){ // -lR
+			if(hasText(flags, "l") && !hasText(flags, "a")){ // -lR
 				flag_l(fileList, parent, false);
 				cout << endl;
 				flag_R(fileList, parent, false, true);	
@@ -443,7 +435,7 @@ void lsExec(vector<string> cmdFiles, string flags){
 			}
 			else if(!hasText(flags, "a") && !hasText(flags, "l")){ // -R
 				printVect(fileList, parent, false);
-				//cout << endl;
+				cout << endl;
 				flag_R(fileList, parent, false, false);
 			}
 		}
