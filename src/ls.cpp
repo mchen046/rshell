@@ -26,11 +26,11 @@ https://www.github.com/mchen046/rshell/src/ls.cpp
 #include <grp.h>
 #include <time.h>
 
-#define RESET   "\033[0m"
+#define RESET   "\033[0m"					/* RESET */
 #define BOLDBLACK   "\033[1m\033[30m"      /* Bold Black */
 #define BOLDGREEN   "\033[1m\033[32m"      /* Bold Green */
 #define BOLDBLUE    "\033[1m\033[34m"      /* Bold Blue */
-#define GREYBG	"\033[1;40m" /* GREY BACKGROUND */ 
+#define GREYBG	"\033[1;40m"			/* GREY BACKGROUND */ 
 
 using namespace std;
 using namespace boost;
@@ -40,7 +40,6 @@ void chop(string text, bool d, bool e, int width){
 	tokenizer<char_separator<char> >mytok(text, delim);
 	for(auto it = mytok.begin(); it != mytok.end(); it++){
 		auto itA = it;
-		//cout << *it << endl;
 		if(++itA==mytok.end()){
 			if(static_cast<string>(*it)[0]=='.'){
 				cout << GREYBG;
@@ -70,13 +69,11 @@ int fileWidth(vector<string> fileList){
 void printVect(vector<string> cmd, string parent, bool a){
 	struct stat s;
 	int width = fileWidth(cmd);
-	//cout << "width: " << width << endl;
 	unsigned int j = 0;
 	string absolName;
 	for(unsigned int i = 0; i<cmd.size(); i++){
 		if(a || (cmd[i][0]=='.' && cmd[i][1]=='/') || cmd[i][0]!='.'){
 			absolName = parent + '/' + cmd[i];
-			//cout << "absolName: " << absolName << endl;
 			if(stat(absolName.c_str(), &s)<0){
 				perror("stat");
 				exit(1);
@@ -143,7 +140,6 @@ bool isText(char* cmdText, string text){
 
 int lsOrg(vector<string> cmd, vector<string> &cmdFiles, set<char> &cmdFlags){
 	for(unsigned int i = 0; i<cmd.size(); i++){
-		//cout << cmd[i] << endl;
 		if(cmd[i][0]=='-'){ //is a flag
 			for(int j = 1; cmd[i][j]!='\0'; j++){
 				if(cmd[i][j]=='a' || cmd[i][j]=='l' || cmd[i][j]=='R'){
@@ -250,7 +246,6 @@ void flag_l(vector<string> fileList, string parent, bool a){ //add parent parame
 	string absolName;
 	for(unsigned i  = 0; i<fileList.size(); i++){
 		absolName = parent + '/' + fileList[i];
-		//cout << "absolName: " << absolName << endl;
 		if(a || (fileList[i][0]=='.' && fileList[i][1]=='/') || fileList[i][0]!='.'){
 			if(stat(absolName.c_str(), &s)<0){
 				perror("stat");
@@ -336,7 +331,6 @@ void flag_R(vector<string> fileList, string parent, bool a, bool l){
 	for(unsigned int i = 0; i<fileList.size(); i++){
 		if((fileList[i]!="." && fileList[i]!="..") && (a || (fileList[i][0]=='.' && fileList[i][1]=='/') || fileList[i][0]!='.')){
 			string absolName = parent + "/" + fileList[i];
-			//cout << "absolName: " << absolName << endl;
 			if(stat(absolName.c_str(), &s)<0){
 				perror("stat");
 				exit(1);
@@ -398,9 +392,6 @@ void lsExec(vector<string> cmdFiles, string flags){
 	}
 
 	for(unsigned int i = 0; i<cmdFiles.size(); i++){
-		//cout << cmdFiles[i] << endl;
-	
-
 		if(exists(cmdFiles[i])){
 			if(stat(cmdFiles[i].c_str(), &s)<0){
 				perror("stat");
@@ -467,9 +458,6 @@ void lsExec(vector<string> cmdFiles, string flags){
 }
 
 void ls(vector<string> cmd){
-	//conduct error checking here
-
-
 	vector<string> cmdFiles;
 	set<char> cmdFlags;
 	if(lsOrg(cmd, cmdFiles, cmdFlags)==-1){
@@ -484,11 +472,10 @@ void ls(vector<string> cmd){
 
 		lsExec(cmdFiles, flags);
 }
+
 int main(int argc, char** argv){
 	vector<string> cmd;
 	for(int i = 1; i<argc; i++){
-		//cout << argv[i] << endl;
-
 		//output error message
 		if(argv[i][0]!='-'){
 			if(!exists(static_cast<string>(argv[i]))){
@@ -520,3 +507,4 @@ int main(int argc, char** argv){
 	ls(cmd);
 	return 0;
 }
+
