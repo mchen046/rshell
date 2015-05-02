@@ -121,7 +121,7 @@ Various combinations of the `-l -a -R` flags impede proper newline placement bet
 
 **5. symbolic links**
 
-The implemented subpart of the GNU ls command is not able to display `->` for the parent link of symbolic link in the `-l` flag
+The implemented subpart of the GNU ls command is not able to display `->` for the parent link of symbolic links in the `-l` flag
 
 **6. year and time display**
 
@@ -129,4 +129,8 @@ GNU ls occasionaly prints a files last modification date in the `month date time
 
 The implemented subpart of the GNU ls command only prints in the `month date time` format for the `-l` flag.  
 
+**7. executing ls on an existing file**
 
+When ls is called on an existing file, GNU ls prints out the file's path.
+
+The implemented subpart of the GNU ls command is not able to execute on an existing file.
