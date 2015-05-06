@@ -381,8 +381,15 @@ int main(){
 		string cmd, cmd2, stringToken;
 
 		char host[64];	//prompt
-		gethostname(host,64);
-		cout << getlogin() << '@' << host << "$ ";
+		if(-1 == gethostname(host,64)){
+			perror("gethostname");
+		}
+		char *login;
+		if(NULL == (login = getlogin())){
+			perror("getlogin");
+		}
+		
+		cout << login << '@' << host << "$ ";
 		getline(cin, cmd);
 		
 		//filter comments
