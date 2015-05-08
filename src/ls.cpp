@@ -2,7 +2,7 @@
 Michael Chen mchen046@ucr.edu
 SID: 861108671
 CS100 Spring 2015: hw1-ls
-https://www.github.com/mchen046/rshell/src/ls.cpp
+https://www.github.com/mchen046/rshell/blob/master/src/ls.cpp
 */
 #include <iostream>
 #include <unistd.h>

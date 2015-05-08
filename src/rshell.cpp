@@ -2,7 +2,7 @@
 Michael Chen mchen046@ucr.edu
 SID: 861108671
 CS100 Spring 2015: hw0-rshell
-https://www.github.com/mchen046/rshell/src/rshell.cpp
+https://www.github.com/mchen046/rshell/blob/master/src/rshell.cpp
 */
 #include <iostream>
 #include <unistd.h>
