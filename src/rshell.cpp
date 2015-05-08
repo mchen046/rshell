@@ -125,7 +125,24 @@ char** parseSpace(char *cmd){
 	//deallocate cmdExec?
 }
 
+int redir(char**cmdD){
+	//convert char** to vector<string>
+	vector<string> cmd;
+	for(unsigned int i = 0; cmdD[i]!=NULL; i++){
+		cmd.push_back(string(cmdD[i]));
+		//cerr << cmd[i] << endl;
+	}
+
+	
+	return 0;
+}
+
+
+
+
+
 int execCmd(char** cmdD){ //process spawning
+	int status = 0;
 	if(exitSeen){
 		//deallocate cmdD
 		for(int i = 0; cmdD[i]!=NULL; i++){
@@ -135,30 +152,43 @@ int execCmd(char** cmdD){ //process spawning
 		return -1;
 	}
 	exitSeen = false;
-	int pid = fork();
-	int status = 0;
-	//cout << "cmdD[0]: " << cmdD[0] << endl;
-	if(pid == -1){ //error
-		perror("fork() error");
-		_exit(2);
-	}
-	else if(pid == 0){ //child process
-		//cout << "cmdD[0]: " << cmdD[0] << endl;
-		if(execvp(cmdD[0], cmdD) == -1){
-			perror("error in execvp"); //status becomes 256/512
-			_exit(2);
+	
+	//checking to see if | or > exists
+	bool redirect = false;
+	for(unsigned int i = 0; cmdD[i]!=NULL && !redirect; i++){
+		for(unsigned int j = 0; cmdD[i][j]!='\0' && !redirect; j++){
+			if(cmdD[i][j]=='>' || cmdD[i][j]=='|'){
+				redirect = true;
+			}
 		}
 	}
-	else if(pid > 0){ //parent process
-		if(wait(&status)==-1){		
-			perror("error in wait()");
+	if(redirect && redir(cmdD)!=0){ // call redirection (hw2)
+		status = -1;
+	}
+	else if(!redirect){
+		int pid = fork();
+		if(pid == -1){ //error
+			perror("fork() error");
 			_exit(2);
 		}
-	}
-	//cout << "status: " << status << endl;
-	if(status!=0){ //command fails 
-		//cout << "command fails!\n";
-		return -1;
+		else if(pid == 0){ //child process
+			//cout << "cmdD[0]: " << cmdD[0] << endl;
+			if(execvp(cmdD[0], cmdD) == -1){
+				perror("error in execvp"); //status becomes 256/512
+				_exit(2);
+			}
+		}
+		else if(pid > 0){ //parent process
+			if(wait(&status)==-1){		
+				perror("error in wait()");
+				_exit(2);
+			}
+		}
+		//cout << "status: " << status << endl;
+		if(status!=0){ //command fails 
+			//cout << "command fails!\n";
+			return -1;
+		}
 	}
 
 	//deallocate cmdD
@@ -215,97 +245,32 @@ bool onlySpace(string str){
 	return true;
 }
 
-
 bool checkConnector(string cmd, string &stringToken){
-	bool valid = true;
-	bool space = false;
-	for(unsigned int i = 0; i<cmd.size() && valid; i++){
-		if(cmd.at(i)=='&'){
-			for(unsigned int j = i+1; j<cmd.size() && valid; j++){
-				if(cmd.at(j)=='|'){
-					stringToken = "|";
-					valid = false;
-				}
-				else if(cmd.at(j)=='&'){
-					if(space){
-						stringToken = "&";
-						if(j+1<cmd.size() && cmd.at(j+1)=='&'){
-							stringToken = "&&";
-						}
-						valid = false;
-					}
-					for(unsigned int k = j+1; k<cmd.size() && valid; k++){
-						if(cmd.at(k)=='&'){
-							stringToken = "&";
-							if(space){
-								stringToken = "&";
-								if(k+1<cmd.size() && cmd.at(k+1)=='&'){
-									stringToken = "&&";
-								}
-							}
-							valid = false;
-						}
-						else if(cmd.at(k)=='|'){
-							stringToken = "||";
-							if(space){
-								stringToken = "|";
-							}
-							valid = false;
-						}
-						else if(cmd.at(k)==' '){
-							space = true;
-						}
-					}
-				}
-				else if(cmd.at(j)==' '){
-					space = true;
-				}
-			}
+	unsigned int space = 0, a = 0, o = 0, x = 0;
+	for(unsigned int i = 0; i<cmd.size(); i++){
+		if(cmd[i]==' '){
+			space++;
 		}
-		else if(cmd.at(i)=='|'){
-			for(unsigned int j = i+1; j<cmd.size() && valid; j++){
-				if(cmd.at(j)=='&'){
-					stringToken = "&";
-					valid = false;
-				}
-				else if(cmd.at(j)=='|'){
-					if(space){
-						stringToken = "|";
-						if(j+1<cmd.size() && cmd.at(j+1)=='|'){
-							stringToken = "||";
-						}
-						valid = false;
-					}
-					for(unsigned int k = j+1; k<cmd.size() && valid; k++){
-						if(cmd.at(k)=='|'){
-							stringToken = "|";
-							if(space){
-								stringToken = "|";
-								if(k+1<cmd.size() && cmd.at(k+1)=='|'){
-									stringToken = "||";
-								}
-							}
-							valid = false;
-						}
-						else if(cmd.at(k)=='&'){
-							stringToken = "&&";
-							if(space){
-								stringToken = "&";
-							}
-							valid = false;
-						}
-						else if(cmd.at(k)==' '){
-							space = true;
-						}
-					}
-				}
-				else if(cmd.at(j)==' '){
-					space = true;
-				}
-			}
+		else if(cmd[i]=='&'){
+			space=x=0;
+			a++;
 		}
+		else if(cmd[i]=='|'){
+			space=x=0;
+			o++;
+		}
+		else{
+			x++;
+			a=o=space=0;
+		}
+
+		if((((a>2 || o>2) || ((a==2 && o==1) || (a==1 && o==2))) && x==0) || (a==1 && o==1) || (a==1 && space!=0)){
+			stringToken = cmd[i];
+			return false;
+		}
+
 	}
-	return valid;
+	return true;
 }
 
 void parseMaster(char* cmdB){
@@ -333,7 +298,6 @@ void parseMaster(char* cmdB){
 	else if(hasText(cmdB, "&&") && hasText(cmdB, "||")){ //has both && and ||
 		char* cmdBX = new char[strlen(cmdB)]; //backup cmdB
 		strcpy(cmdBX, cmdB);
-
 		bool succeed;
 		char *ptrA;
 		vector<char*> cmdD;
@@ -370,8 +334,8 @@ void parseMaster(char* cmdB){
 				}
 				cmdD.clear();
 			}
-			delete[] cmdBX;
 		}
+		delete[] cmdBX;
 	}
 	cmdC.clear();
 }
@@ -401,13 +365,13 @@ int main(){
 				i=cmd.size();
 			}
 		}
-		/*
+		
 		//check for invalid instances of && and ||
 		if(!checkConnector(cmd2, stringToken)){
 			cout << "rshell: syntax error near unexpected token \'" << stringToken << "\'" << endl;
 			cmd2 = "";
 		}
-		*/	
+		
 		if(cmd2!="" && !onlySpace(cmd2)){ //if command is not empty
 			//convert string to char*
 			char *cmdA = new char[cmd2.size()+1];
