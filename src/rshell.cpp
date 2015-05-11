@@ -76,7 +76,7 @@ bool isNumericOnly(const string &str){
 	return all_of(str.begin(), str.end(), ::isdigit);
 }
 
-char** parseSpace(char *cmd){
+char** parseSpace(const char *cmd){
 	string str = static_cast<string>(cmd); //parsing " "	
 	char_separator<char> delim(" ");
 	tokenizer< char_separator<char> > mytok(str, delim);
@@ -104,7 +104,7 @@ char** parseSpace(char *cmd){
 		if(++itA==mytok.end()){
 			cmdExec[i+1] = NULL;
 		}
-		i++;	
+		i++;
 		//deallocate token?
 	}
 	if(isText(cmdExec[0], "exit") || isText(cmdExec[0], "exit;")){ //exit executable
@@ -126,20 +126,136 @@ char** parseSpace(char *cmd){
 }
 
 int redir(char**cmdD){
+	const int PIPE_READ = 0;
+	const int PIPE_WRITE = 1;
+	int status = 0, status2 = 0;
+
 	//convert char** to vector<string>
 	vector<string> cmd;
 	for(unsigned int i = 0; cmdD[i]!=NULL; i++){
 		cmd.push_back(string(cmdD[i]));
-		//cerr << cmd[i] << endl;
+		cerr << cmd[i] << endl;
 	}
 
-	
-	return 0;
+	//parsing by pipes
+	vector<string> cmdPiped;
+	string seg;
+	for(unsigned int i = 0; i<cmd.size(); i++){
+		if(cmd[i]!="|"){
+			seg+=cmd[i] + ' ';
+		}
+		if(cmd[i]=="|" || (i+1) == cmd.size()){
+			cmdPiped.push_back(seg);
+			seg = "";
+		}
+	}
+
+	//printing cmdPiped
+	cout << endl << "cmdPiped: " << endl;
+	for(unsigned int i = 0; i<cmdPiped.size(); i++){
+		cout << '[' << i << "]: " << cmdPiped[i] << endl;
+	}
+	cout << endl;
+
+	vector<char**> cmdExec;
+	for(unsigned int i = 0; i<cmdPiped.size(); i++){
+		cmdExec.push_back(parseSpace(cmdPiped[i].c_str()));
+	}
+
+	//printing cmdExec;
+	for(unsigned int i = 0; i<cmdExec.size(); i++){
+		for(unsigned int j = 0; cmdExec[i][j]!=NULL; j++){
+			cout << cmdExec[i][j] << endl;
+		}
+	}
+
+	//executing by pipe segment
+	for(unsigned int i = 0; i<cmdExec.size(); i+=2){
+
+		int fd[2];
+		if(pipe(fd) == -1){
+			perror("pipe");
+			_exit(2);
+		}
+
+		int pid = fork();
+		if(pid == -1){
+			perror("fork");
+			_exit(2);
+		}
+		else if(pid == 0){ //first child process
+			//writing to the pipe
+			cerr << "in first child" << endl;
+			if(-1 == dup2(fd[PIPE_WRITE], 1)){ //move stdout to write end of pipe
+				perror("dup2");
+				_exit(2);
+			}
+			if(-1 == close(fd[PIPE_READ])){ //close read end of pipe (not using it)
+				perror("close");
+				_exit(2);
+			}
+			cerr << "executing " << cmdExec[i][0] << endl;
+			if(-1 == execvp(cmdExec[i][0], cmdExec[i])){
+				perror("execvp");
+				_exit(2);
+			}
+		}
+		else if(pid>0){ //parent process
+			cerr << "in first parent" << endl;
+			
+			if(-1 == waitpid(pid, &status, WIFEXITED(status))){ 
+				perror("wait");
+				_exit(2);
+			}
+		}
+		if(i+1<cmdExec.size()){
+			int pid2 = fork();
+			if(pid2 == -1){
+				perror("fork");
+				_exit(2);
+			}
+			else if(pid2 == 0){ //second child process
+				cerr << "in second child" << endl;
+				
+
+				if(-1 == dup2(fd[PIPE_READ], 0)){ //make stdin the read end of pipe
+					perror("dup2");
+					_exit(2);
+				}
+				if(-1 == close(fd[PIPE_WRITE])){ //close write end of the pipe (not using it)
+					perror("close");
+					_exit(2);
+				}
+				cerr << "executing " << cmdExec[i+1][0] << endl;
+				if(-1 == execvp(cmdExec[i+1][0], cmdExec[i+1])){
+					perror("execvp");
+					_exit(2);
+				}
+			}
+			else if(pid2>0){ //second parent process
+				cerr << "in second parent" << endl;
+				
+				int savestdin = 0;
+				if(-1 == (savestdin==dup(0))){ //saving stdin
+					perror("dup");
+					_exit(2);
+				}
+				if(-1 == waitpid(pid2, &status2, WIFEXITED(status2))){
+					perror("wait");
+					_exit(2);
+				}
+				//restore stdin
+				if(-1 == dup2(savestdin, 0)){
+					perror("dup2");
+					_exit(2);
+				}
+			}
+		}
+		//else{
+
+	}
+	return 1;
 }
-
-
-
-
 
 int execCmd(char** cmdD){ //process spawning
 	int status = 0;
@@ -157,12 +273,12 @@ int execCmd(char** cmdD){ //process spawning
 	bool redirect = false;
 	for(unsigned int i = 0; cmdD[i]!=NULL && !redirect; i++){
 		for(unsigned int j = 0; cmdD[i][j]!='\0' && !redirect; j++){
-			if(cmdD[i][j]=='>' || cmdD[i][j]=='|'){
+			if(cmdD[i][j]=='>' || cmdD[i][j]=='|' || cmdD[i][j]=='<'){
 				redirect = true;
 			}
 		}
 	}
-	if(redirect && redir(cmdD)!=0){ // call redirection (hw2)
+	if(redirect && redir(cmdD)!=1){ // call redirection (hw2)
 		status = -1;
 	}
 	else if(!redirect){
@@ -172,13 +288,14 @@ int execCmd(char** cmdD){ //process spawning
 			_exit(2);
 		}
 		else if(pid == 0){ //child process
-			//cout << "cmdD[0]: " << cmdD[0] << endl;
+			cerr << "in child" << endl;
 			if(execvp(cmdD[0], cmdD) == -1){
 				perror("error in execvp"); //status becomes 256/512
 				_exit(2);
 			}
 		}
 		else if(pid > 0){ //parent process
+			cout << "in parent" << endl;
 			if(wait(&status)==-1){		
 				perror("error in wait()");
 				_exit(2);
