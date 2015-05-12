@@ -17,6 +17,7 @@ https://www.github.com/mchen046/rshell/blob/master/src/rshell.cpp
 #include <stdio.h>
 #include <boost/tokenizer.hpp>
 #include <boost/token_iterator.hpp>
+#include <fcntl.h>
 
 using namespace std;
 using namespace boost;
@@ -207,6 +208,7 @@ int redir(char**cmdD){
 				argv[j] = argvChild[j];
 				cerr << argv[j] << endl;
 				if((j+1)==argvChild.size()){
+					argv[j+1] = NULL;
 					argv[j+2] = NULL;
 				}
 			}
@@ -219,18 +221,22 @@ int redir(char**cmdD){
 				bool alt = false;
 				if(strcmp(cmdExec[i][j], "<")!=0){
 					//check if file is an existing file
-						
-
-					//if is an existing file
+					bool fileExists = true;
+					if(-1 == open(cmdExec[i][j], O_RDONLY)){
+						perror("open");
+						cerr << argv[0] << ": " << cmdExec[i][j] << ": No such file or directory" << endl;
+						fileExists = false;
+						//status = -1;
+					}
+					if(fileExists){
+						//if is an existing file
 						files.push_back(cmdExec[i][j]);
 						cerr << cmdExec[i][j]<< endl;
 						if(cmdExec[i][j+1]!=NULL){
 							alt = true;
 						}
+					}
 					
-					//else not an existing file
-						//output error message
-						//exit
 				}
 				else{ numL++; }
 				
@@ -439,6 +445,16 @@ int execCmd(char** cmdD, bool dealloc){ //process spawning
 		}
 		else if(pid == 0){ //child process
 			cerr << "in child" << endl;
+			//checking for nonexistent file; failing loud and clear
+			bool nonEx = false;
+			for(unsigned int i = 1; cmdD[i]!=NULL && !nonEx; i++){
+				if(-1 == open(cmdD[i], O_RDONLY)){
+					perror("open");
+					cerr << cmdD[0] << ": " << cmdD[i] << ": No such file or directory" << endl;
+					nonEx = true;
+				}
+			}
+
 			if(execvp(cmdD[0], cmdD) == -1){
 				perror("error in execvp"); //status becomes 256/512
 				_exit(2);
