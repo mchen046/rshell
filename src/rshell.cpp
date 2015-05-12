@@ -125,10 +125,15 @@ char** parseSpace(const char *cmd){
 	//deallocate cmdExec?
 }
 
+int redirExec(char** argv, string file);
+
+int execCmd(char** cmdD); //process spawning
+
+
 int redir(char**cmdD){
-	const int PIPE_READ = 0;
-	const int PIPE_WRITE = 1;
-	int status = 0, status2 = 0;
+	//const int PIPE_READ = 0;
+	//const int PIPE_WRITE = 1;
+	//int status = 0, status2 = 0;
 
 	//convert char** to vector<string>
 	vector<string> cmd;
@@ -171,8 +176,111 @@ int redir(char**cmdD){
 
 	//executing by pipe segment
 	for(unsigned int i = 0; i<cmdExec.size(); i+=2){
+		bool hasL = false;
+		//bool hasG = false, has2L = false, has2G = false;
+		for(unsigned int j = 0; cmdExec[i][j]!=NULL; j++){
+			if(strcmp(cmdExec[i][j], "<") == 0){
+				hasL = true;
+			}
+			if(strcmp(cmdExec[i][j], ">") == 0){
+				//hasG = true;
+			}
+			if(strcmp(cmdExec[i][j], "<<") == 1){
+				//has2L = true;
+			}
+			if(strcmp(cmdExec[i][j], ">>") == 0){
+				//has2G = true;
+			}		
+		}
 
-		int fd[2];
+		if(hasL){
+			vector<char*> argvChild; //executable commands
+			unsigned int posL = 0;
+			for(; cmdExec[i][posL]!=NULL && strcmp(cmdExec[i][posL], "<")!=0; posL++){
+				argvChild.push_back(cmdExec[i][posL]);
+			}
+
+			//convert executable commands from vector<char*> to char**
+			cerr << endl << "argv: " << endl;
+			char **argv = new char*[argvChild.size()+2];
+			for(unsigned int j = 0; j<argvChild.size(); j++){
+				argv[j] = argvChild[j];
+				cerr << argv[j] << endl;
+				if((j+1)==argvChild.size()){
+					argv[j+2] = NULL;
+				}
+			}
+
+			//loop iterations of <
+			vector<string> files; //list of files to cast input redirection
+			cerr << endl << "files: " << endl;
+			for(unsigned int j = posL+1; cmdExec[i][j]!=NULL; j++){
+				bool alt = false;
+				if(strcmp(cmdExec[i][j], "<")!=0){
+					//check if file is an existing file
+						
+
+					//if is an existing file
+						files.push_back(cmdExec[i][j]);
+						cerr << cmdExec[i][j]<< endl;
+						if(cmdExec[i][j+1]!=NULL){
+							alt = true;
+						}
+					
+					//else not an existing file
+						//output error message
+						//exit
+				}
+				
+				if(files.size()!=1 && !alt){
+					//call dup pipe except on the first file
+					for(unsigned int k = 1; k<files.size(); k++){
+						//call dup and pipe
+						argv[argvChild.size()+1]=const_cast<char*>(files[k].c_str());
+						cerr << "calling execCmd on " << files[k] << endl;
+						execCmd(argv);
+					}
+					files.clear();
+					cerr << endl << "files: " << endl;
+				}
+				else if(files.size()==1 && !alt){
+					if(cmdExec[i][j+1]==NULL){
+						//call dup pipe on the first and only file
+						argv[argvChild.size()+1]=const_cast<char*>(files[0].c_str());
+						cerr << "calling pip and dup on " << files[0] << endl;
+						execCmd(argv);
+					}
+					files.clear();
+					cerr << endl << "files: " << endl;
+				}
+			}
+		}
+
+				
+
+
+
+				
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		/*int fd[2];
 		if(pipe(fd) == -1){
 			perror("pipe");
 			_exit(2);
@@ -194,7 +302,7 @@ int redir(char**cmdD){
 				perror("close");
 				_exit(2);
 			}
-			cerr << "executing " << cmdExec[i][0] << endl;
+			//cerr << "executing " << cmdExec[i][0] << endl;
 			if(-1 == execvp(cmdExec[i][0], cmdExec[i])){
 				perror("execvp");
 				_exit(2);
@@ -203,7 +311,7 @@ int redir(char**cmdD){
 		else if(pid>0){ //parent process
 			cerr << "in first parent" << endl;
 			
-			if(-1 == waitpid(pid, &status, WIFEXITED(status))){ 
+			if(-1 == wait(&status)){ 
 				perror("wait");
 				_exit(2);
 			}
@@ -226,7 +334,7 @@ int redir(char**cmdD){
 					perror("close");
 					_exit(2);
 				}
-				cerr << "executing " << cmdExec[i+1][0] << endl;
+				//cerr << "executing " << cmdExec[i+1][0] << endl;
 				if(-1 == execvp(cmdExec[i+1][0], cmdExec[i+1])){
 					perror("execvp");
 					_exit(2);
@@ -240,7 +348,7 @@ int redir(char**cmdD){
 					perror("dup");
 					_exit(2);
 				}
-				if(-1 == waitpid(pid2, &status2, WIFEXITED(status2))){
+				if(-1 == wait(&status2)){
 					perror("wait");
 					_exit(2);
 				}
@@ -250,7 +358,7 @@ int redir(char**cmdD){
 					_exit(2);
 				}
 			}
-		}
+		}*/
 		//else{
 
 	}
@@ -295,7 +403,7 @@ int execCmd(char** cmdD){ //process spawning
 			}
 		}
 		else if(pid > 0){ //parent process
-			cout << "in parent" << endl;
+			cerr << "in parent" << endl;
 			if(wait(&status)==-1){		
 				perror("error in wait()");
 				_exit(2);
