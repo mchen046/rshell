@@ -127,7 +127,7 @@ char** parseSpace(const char *cmd){
 
 int redirExec(char** argv, string file);
 
-int execCmd(char** cmdD); //process spawning
+int execCmd(char** cmdD, bool dealloc); //process spawning
 
 
 int redir(char**cmdD){
@@ -156,11 +156,11 @@ int redir(char**cmdD){
 	}
 
 	//printing cmdPiped
-	cout << endl << "cmdPiped: " << endl;
+	cerr << endl << "cmdPiped: " << endl;
 	for(unsigned int i = 0; i<cmdPiped.size(); i++){
-		cout << '[' << i << "]: " << cmdPiped[i] << endl;
+		cerr << '[' << i << "]: " << cmdPiped[i] << endl;
 	}
-	cout << endl;
+	cerr << endl;
 
 	vector<char**> cmdExec;
 	for(unsigned int i = 0; i<cmdPiped.size(); i++){
@@ -170,7 +170,7 @@ int redir(char**cmdD){
 	//printing cmdExec;
 	for(unsigned int i = 0; i<cmdExec.size(); i++){
 		for(unsigned int j = 0; cmdExec[i][j]!=NULL; j++){
-			cout << cmdExec[i][j] << endl;
+			cerr << cmdExec[i][j] << endl;
 		}
 	}
 
@@ -210,10 +210,11 @@ int redir(char**cmdD){
 					argv[j+2] = NULL;
 				}
 			}
-
+			
 			//loop iterations of <
 			vector<string> files; //list of files to cast input redirection
 			cerr << endl << "files: " << endl;
+			unsigned int numL = 0;
 			for(unsigned int j = posL+1; cmdExec[i][j]!=NULL; j++){
 				bool alt = false;
 				if(strcmp(cmdExec[i][j], "<")!=0){
@@ -231,29 +232,63 @@ int redir(char**cmdD){
 						//output error message
 						//exit
 				}
+				else{ numL++; }
 				
-				if(files.size()!=1 && !alt){
-					//call dup pipe except on the first file
-					for(unsigned int k = 1; k<files.size(); k++){
-						//call dup and pipe
-						argv[argvChild.size()+1]=const_cast<char*>(files[k].c_str());
-						cerr << "calling execCmd on " << files[k] << endl;
-						execCmd(argv);
+				if(!alt){
+					if(files.size()!=1){
+						//call dup pipe except on the first file
+						for(unsigned int k = 1; k<files.size(); k++){
+							//call dup and pipe
+							char* token = new char[strlen(const_cast<char*>(files[k].c_str()))];
+							strcpy(token, files[k].c_str());
+							cerr << "argvChild.size(): " << argvChild.size() << endl;
+							argv[argvChild.size()]=token;	
+							cerr << "calling execCmd on " << files[k] << endl;
+							if(execCmd(argv, false)==-1){
+								return -1;
+							}
+							while(argvChild.size()!=1){
+								argvChild.pop_back();
+							}
+							//clear argv
+							for(unsigned int a = 1; argv[a]!=NULL; a++){
+								argv[a]=NULL;
+							}
+						}
 					}
-					files.clear();
-					cerr << endl << "files: " << endl;
-				}
-				else if(files.size()==1 && !alt){
-					if(cmdExec[i][j+1]==NULL){
-						//call dup pipe on the first and only file
-						argv[argvChild.size()+1]=const_cast<char*>(files[0].c_str());
-						cerr << "calling pip and dup on " << files[0] << endl;
-						execCmd(argv);
+					else if(files.size()==1){
+						if(cmdExec[i][j+1]==NULL){
+							//call dup pipe on the first and only file
+							cerr << "argvChild.size(): " << argvChild.size() << endl;
+							if(numL==0 && strcmp(argv[0], "cat")==0 && argv[1]==NULL){
+								char* token = new char[strlen(const_cast<char*>(files[0].c_str()))];
+								strcpy(token, files[0].c_str());
+								argv[argvChild.size()] = token;
+							}
+							else{
+								argv[argvChild.size()] = NULL;
+							}
+							cerr << "calling execCmd on " << files[0] << endl;
+							if(execCmd(argv, false)==-1){
+								return -1;
+							}
+							while(argvChild.size()!=1){
+								argvChild.pop_back();
+							}
+							//clear argv
+							for(unsigned int a = 1; argv[a]!=NULL; a++){
+								argv[a]=NULL;
+							}
+						}
 					}
 					files.clear();
 					cerr << endl << "files: " << endl;
 				}
 			}
+			for(unsigned int j = 0; argv[j]!=NULL; j++){
+				delete[] argv[j];
+			}
+			delete[] argv;
 		}
 
 				
@@ -362,10 +397,17 @@ int redir(char**cmdD){
 		//else{
 
 	}
+	//deallocating cmdExec
+	/*for(unsigned int i = 0; i<cmdExec.size(); i++){
+		for(unsigned int j = 0; cmdExec[i][j]!=NULL; j++){
+			delete[] cmdExec[i][j];
+		}
+		delete[] cmdExec[i];
+	}*/
 	return 1;
 }
 
-int execCmd(char** cmdD){ //process spawning
+int execCmd(char** cmdD, bool dealloc){ //process spawning
 	int status = 0;
 	if(exitSeen){
 		//deallocate cmdD
@@ -417,10 +459,12 @@ int execCmd(char** cmdD){ //process spawning
 	}
 
 	//deallocate cmdD
-	for(int i = 0; cmdD[i]!=NULL; i++){
-		delete[] cmdD[i];
+	if(dealloc){
+		for(int i = 0; cmdD[i]!=NULL; i++){
+			delete[] cmdD[i];
+		}
+		delete[] cmdD;
 	}
-	delete[] cmdD;
 	
 	return status; //status defaults to 0 if successful
 }
@@ -443,7 +487,7 @@ int cAND(vector<char*> &cmdC, char *cmdB, char **ptr){ //parse and execute && co
 	parseDelim(cmdC, cmdB, "&&", &*ptr);
 	int success = 1;
 	for(unsigned int i = 0; i<cmdC.size() && success!=-1; i++){
-		if(execCmd(parseSpace(cmdC[i]))==-1){ //command fails
+		if(execCmd(parseSpace(cmdC[i]), true)==-1){ //command fails
 			success = -1;
 		}
 	}
@@ -454,7 +498,7 @@ int cOR(vector<char*> &cmdC, char *cmdB, char **ptr){ //parse and execute || com
 	parseDelim(cmdC, cmdB, "||", &*ptr);
 	int success = -1;
 	for(unsigned int i = 0; i<cmdC.size() && success==-1; i++){
-		if(!execCmd(parseSpace(cmdC[i]))){ //command succeeds
+		if(!execCmd(parseSpace(cmdC[i]), true)){ //command succeeds
 			success = 1;
 		}
 	}
@@ -503,7 +547,7 @@ void parseMaster(char* cmdB){
 	vector <char*> cmdC;
 	if((hasText(cmdB, "\"") || hasText(cmdB, "(") || hasText(cmdB, ")")) && !hasText(cmdB, "&&") && !hasText(cmdB, "||")){
 		if(hasText(cmdB, "&") || hasText(cmdB, "|")){
-			execCmd(parseSpace(cmdB));
+			execCmd(parseSpace(cmdB), true);
 		}
 		else{
 			//invalid command
@@ -512,7 +556,7 @@ void parseMaster(char* cmdB){
 	}
 	else if(!hasText(cmdB, "&&") && !hasText(cmdB, "||")){
 		//execute
-		execCmd(parseSpace(cmdB));
+		execCmd(parseSpace(cmdB), true);
 	}
 	else if(hasText(cmdB, "&&") && !hasText(cmdB, "||")){ //only has &&
 		cAND(cmdC, cmdB, &ptr);
@@ -536,7 +580,7 @@ void parseMaster(char* cmdB){
 						succeed	= true;
 					}
 				}
-				else if(!execCmd(parseSpace(cmdC[i]))){
+				else if(!execCmd(parseSpace(cmdC[i]), true)){
 					succeed = true;
 				}
 			}
@@ -554,7 +598,7 @@ void parseMaster(char* cmdB){
 						succeed = false;
 					}
 				}
-				else if(execCmd(parseSpace(cmdC[i]))==-1){
+				else if(execCmd(parseSpace(cmdC[i]), true)==-1){
 					succeed = false;
 				}
 				cmdD.clear();
@@ -566,6 +610,7 @@ void parseMaster(char* cmdB){
 }
 
 int main(){
+	close(2);
 	while(1){
 		string cmd, cmd2, stringToken;
 
