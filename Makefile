@@ -24,3 +24,6 @@ valgrind:
 	if [ ! -d bin ]; then mkdir bin; fi
 	g++ -std=c++11 -Wall -Werror -pedantic -g ./src/rshell.cpp -o bin/rshell
 	valgrind --tool=memcheck --leak-check=full --track-origins=yes bin/rshell
+.PHONY: eif
+eif:
+	echo one > eif; echo two > eif2; echo three > eif3; echo four > eif4; echo five > eif5; echo six > eif6; echo seven > eif7; echo eight > eif8; echo nine > eif9	
