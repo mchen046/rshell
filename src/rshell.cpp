@@ -153,11 +153,11 @@ int redir(char*cmdB){
 	}
 
 	//printing cmdPiped
-	cerr << endl << "cmdPiped: " << endl;
+	/*cerr << endl << "cmdPiped: " << endl;
 	for(unsigned int i = 0; i<cmdPiped.size(); i++){
 		cerr << '[' << i << "]: " << cmdPiped[i] << endl;
 	}
-	cerr << endl;
+	cerr << endl;*/
 
 	vector<char**> cmdExec;
 	for(unsigned int i = 0; i<cmdPiped.size(); i++){
@@ -165,12 +165,12 @@ int redir(char*cmdB){
 	}
 
 	//printing cmdExec;
-	for(unsigned int i = 0; i<cmdExec.size(); i++){
+	/*for(unsigned int i = 0; i<cmdExec.size(); i++){
 		for(unsigned int j = 0; cmdExec[i][j]!=NULL; j++){
 			cerr << cmdExec[i][j] << endl;
 		}
-	}
-	exit(1);
+	}*/
+
 	//saving stdin
 	int savestdin = 0;
 	if(-1 == (savestdin = dup(0))){ //saving stdin
