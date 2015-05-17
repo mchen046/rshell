@@ -26,6 +26,8 @@ bool exitSeen = false;
 const int RD = 0;
 const int WR = 1;
 int fdNULL[2];
+int savestdin;
+int savestdout;
 
 void printcmd(vector<char*> cmd){ //debugging cmdC
 	cout << "---------------\ncmd\n";
@@ -132,18 +134,6 @@ char** parseSpace(const char *cmd){
 int execCmd(char** argv, int (&fdCur)[2], int (&fdPrev)[2], bool dealloc); //process spawning
 
 int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
-	//saving stdin
-	int savestdin = 0;
-	if(-1 == (savestdin = dup(0))){ //saving stdin
-		perror("dup");
-		_exit(2);
-	}
-
-	//save stdout
-	int savestdout;
-	if(-1 == (savestdout = dup(1))){
-		perror("dup");
-	}
 	//invalid >>>>>> <<<<<< >><<><><
 	for(unsigned int i = 0; argv[i]!=NULL; i++){
 		if((hasText(argv[i], "<") || hasText(argv[i], ">")) && !(strcmp(argv[i], ">")==0 || strcmp(argv[i], ">>")==0 || strcmp(argv[i], "<")==0)){
@@ -247,7 +237,7 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 			if(strcmp(argv[prevPos], "<") == 0){
 				numL++;
 				if(strcmp(argv[0], "cat")==0 && files.size()==1 && (((numL==1 && numG==0 && argc-firstAnglePos==3) || argv[i+1]==NULL) || (argv[1]!=NULL))){
-					if(argv[1]==NULL && cnt == 0){
+					if(argvExec[1]==NULL && cnt == 0){
 						cnt++;
 						char* token = new char[strlen(const_cast<char*>(files[0].c_str()))];
 						strcpy(token, files[0].c_str());
@@ -332,11 +322,11 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 						return -1;
 					}
 				}
-				else if(files.size()==1 && cnt==0 && strcmp(argv[argc-2], "<")!=0 && strcmp(argv[argc-2], ">")!=0 && strcmp(argv[argc-2], ">>")!=0){
+				/*else if(files.size()==1 && cnt==0 && strcmp(argv[argc-2], "<")!=0 && strcmp(argv[argc-2], ">")!=0 && strcmp(argv[argc-2], ">>")!=0){
 					if(-1 == execCmd(argvExec, fdCur, fdPrev, false)){
 						return -1;
 					}
-				}
+				}*/
 				
 				for(unsigned int j = 1; j < files.size(); j++){ //write to fdChild pipe
 					if(strcmp(files[j].c_str(), destFile)!=0){
@@ -396,19 +386,6 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 }
 
 void redirExec(vector<char**> argvMaster){
-	//saving stdin
-	int savestdin = 0;
-	if(-1 == (savestdin = dup(0))){ //saving stdin
-		perror("dup");
-		_exit(2);
-	}
-
-	//save stdout
-	int savestdout;
-	if(-1 == (savestdout = dup(1))){
-		perror("dup");
-	}
-
 	vector<int> pids;
 
 	unsigned int nPS = argvMaster.size();
@@ -461,14 +438,26 @@ void redirExec(vector<char**> argvMaster){
 					perror("dup2");
 					cerr << __LINE__ << endl;
 				}
+				if(-1 == close(pipes[i].fd[RD])){
+					perror("close");
+					cerr << __LINE__ << endl;
+				}
 			}
 			else if(i>0 && (i+1)<nPS){
 				if(-1 == dup2(pipes[i].fd[WR], 1)){
 					perror("dup2");
 					cerr << __LINE__ << endl;
 				}
+				if(-1 == close(pipes[i].fd[RD])){
+					perror("close");
+					cerr << __LINE__ << endl;
+				}
 				if(-1 == dup2(pipes[i-1].fd[RD], 0)){
 					perror("dup2");
+					cerr << __LINE__ << endl;
+				}
+				if(-1 == close(pipes[i-1].fd[WR])){
+					perror("close");
 					cerr << __LINE__ << endl;
 				}
 			}
@@ -480,6 +469,10 @@ void redirExec(vector<char**> argvMaster){
 				}
 				if(-1 == dup2(pipes[i-1].fd[RD], 0)){
 					perror("dup2");
+					cerr << __LINE__ << endl;
+				}
+				if(-1 == close(pipes[i-1].fd[WR])){
+					perror("close");
 					cerr << __LINE__ << endl;
 				}
 			}
@@ -524,7 +517,7 @@ void redirExec(vector<char**> argvMaster){
 			}
 			else if((i+1)>=nPS && !next){ //last pipe segment
 				for(unsigned int j = 0; j<pids.size(); j++){
-					if(-1 == waitpid(pids[i], &status, WUNTRACED)){
+					if(-1 == waitpid(pids[j], &status, WUNTRACED)){
 						perror("wait");
 					}
 				}
@@ -578,25 +571,13 @@ vector<char**> parsePipes(char* cmdB){
 int redir(char*cmdB){
 	vector<char**> argvMaster = parsePipes(cmdB);
 	
-	//saving stdin
-	int savestdin = 0;
-	if(-1 == (savestdin = dup(0))){ //saving stdin
-		perror("dup");
-		_exit(2);
-	}
-
-	//save stdout
-	int savestdout;
-	if(-1 == (savestdout = dup(1))){
-		perror("dup");
-	}
-
+	
 	redirExec(argvMaster);
 
 	if(-1 == dup2(savestdin, 0)){ //restore stdin
 		perror("dup2");
 	}
-	if(-1 == dup2(savestdout, 1)){//restore stdout
+	if(-1 == dup2(savestdout, 1)){ //restore stdout
 		perror("dup2");
 	}
 
@@ -607,6 +588,9 @@ int execCmd(char** argv, int (&fdCur)[2], int (&fdPrev)[2], bool dealloc){ //pro
 	if(fdCur!=fdNULL && fdPrev==fdNULL){ //first element
 		if(-1 == dup2(fdCur[WR], 1)){
 			perror("dup2");
+		}
+		if(-1 == close(fdCur[RD])){
+			perror("close");
 		}
 	}
 	else if(fdCur!=fdNULL && fdPrev!=fdNULL){ //element between first and last
@@ -620,6 +604,9 @@ int execCmd(char** argv, int (&fdCur)[2], int (&fdPrev)[2], bool dealloc){ //pro
 	else if(fdCur==fdNULL && fdPrev!=fdNULL){ //last element
 		if(-1 == dup2(fdPrev[RD], 0)){
 			perror("dup2");
+		}
+		if(-1 == close(fdPrev[WR])){
+			perror("close");
 		}
 	}
 
@@ -826,6 +813,17 @@ void parseMaster(char* cmdB){
 
 int main(){
 	//close(2);
+	
+	//saving stdin
+	if(-1 == (savestdin = dup(0))){ //saving stdin
+		perror("dup");
+	}
+
+	//save stdout
+	if(-1 == (savestdout = dup(1))){
+		perror("dup");
+	}
+
 	while(1){
 		string cmd, cmd2, stringToken;
 
