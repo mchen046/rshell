@@ -129,12 +129,389 @@ char** parseSpace(const char *cmd){
 	//deallocate cmdExec?
 }
 
-void findDestFile();
+int execCmd(char** argv, int (&fdCur)[2], int (&fdPrev)[2], bool dealloc); //process spawning
 
-int execCmd(char** cmdD, bool dealloc, int (&fdChild)[2], bool pipe); //process spawning
+int io(char** argv2, int (&fdCur)[2], int(&fdPrev)[2]){
+	//saving stdin
+	int savestdin = 0;
+	if(-1 == (savestdin = dup(0))){ //saving stdin
+		perror("dup");
+		_exit(2);
+	}
 
-int redir(char*cmdB){
+	//save stdout
+	int savestdout;
+	if(-1 == (savestdout = dup(1))){
+		perror("dup");
+	}
+	//invalid >>>>>> <<<<<< >><<><><
+	for(unsigned int i = 0; argv2[i]!=NULL; i++){
+		if((hasText(argv2[i], "<") || hasText(argv2[i], ">")) && !(strcmp(argv2[i], ">")==0 || strcmp(argv2[i], ">>")==0 || strcmp(argv2[i], "<")==0)){
+			cerr << "rshell: syntax error near unexpected token '" << argv2[i] << "'" << endl;
+			exit(1);
+		}
+	}
 
+	vector<char*> argvChild; //single executable command
+	unsigned int pos = 0;
+	for(; argv2[pos]!=NULL && strcmp(argv2[pos], "<")!=0 && strcmp(argv2[pos], ">")!=0 && strcmp(argv2[pos], ">>")!=0; pos++){
+		argvChild.push_back(argv2[pos]);
+	}
+	unsigned int prevPos = pos;
+	unsigned int firstAnglePos = pos;
+
+	//convert executable commands from vector<char*> to char**
+	unsigned int argc = 0;
+	char **argv = new char*[argvChild.size()+2];
+	for(unsigned int i = 0; i<argvChild.size(); i++){
+		argv[i] = argvChild[i];
+		if((i+1)==argvChild.size()){
+			argv[i+1] = NULL;
+			argv[i+2] = NULL;
+		}
+		argc++;
+	}
+
+	//loop iterations of < > and/or >>
+	unsigned int cnt = 0, numL = 0, numG = 0;
+	vector<string> files;
+
+	//only enable pipe if there is such a file that is preceded by > && succeeded by either < || NULL
+	//find destination file
+	bool seenRed = false;;
+	char* destFile;
+	unsigned int anglePos;
+	for(unsigned int i = 0; argv[i]!=NULL; i++){
+		if(strcmp(argv[i], ">") == 0 || strcmp(argv[i], ">>") == 0){
+			seenRed = true;
+			anglePos = i;
+		}
+		else if(strcmp(argv[i], "<") == 0 && seenRed){
+			destFile = argv[anglePos+1];
+			seenRed = false;
+		}
+		else if(argv[i+1] == NULL && seenRed){
+			destFile = argv[anglePos+1];
+		}
+	}
+	
+
+	bool nxtPipeSeg = false;
+	for(unsigned int i = pos + 1; argv[i]!=NULL && !nxtPipeSeg; i++){
+		int fdGL;
+		if(strcmp(argv[i], "<")!=0 && strcmp(argv[i], ">")!=0 && strcmp(argv[i], ">>")!=0){ //creating list of files
+			//check if file is an existing file
+			bool fileExists = true;
+			
+			if(-1 == (fdGL = open(argv[i], O_RDONLY))){
+				//perror("open");
+				fileExists = false;
+				//status = -1;
+			}
+
+			if(fileExists){ //if is an existing file
+				if(-1 == close(fdGL)){
+					perror("close");
+					exit(1);
+				}
+				files.push_back(argv[i]);
+			
+				if(strcmp(argv[pos], ">") == 0 && files.size()==1){ //if prev >, trunc file
+					if(-1 == (fdGL = open(argv[i], O_WRONLY | O_TRUNC))){
+						perror("open");
+					}
+					if(-1 == close(fdGL)){
+						perror("close");
+					}
+				}
+			}
+			else if(!fileExists){ //file doesn't exit
+				if(strcmp(argv[pos], "<")==0 || ((strcmp(argv[pos], ">")==0 || strcmp(argv[pos], ">>")==0) && files.size()!=0)){
+					cerr << argv[0] << ": " << argv[i] << ": No such file or directory" << endl;
+					//exit(1);
+				}
+				else if((strcmp(argv[pos], ">")==0 || strcmp(argv[pos], ">>")==0) && files.size()==0){ //add condition of parent pipe not enabled 
+					//create new file
+					if(-1 == (fdGL = open(argv[i], O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR))){
+						perror("open");
+					}
+					else if(-1 == close(fdGL)){
+						perror("close");
+					}
+					files.push_back(argv[i]);
+				}
+			}
+		}
+		if(!(strcmp(argv[i], "<")!=0 && strcmp(argv[i], ">")!=0 && strcmp(argv[i], ">>")!=0) || argv[i+1]==NULL){
+			prevPos = pos;
+			pos = i;
+			if(strcmp(argv[prevPos], "<") == 0){
+				numL++;
+				if(strcmp(argv[0], "cat")==0 && files.size()==1 && (((numL==1 && numG==0 && argc-firstAnglePos==3) || argv[i+1]==NULL) || (argv[1]!=NULL))){
+					if(argv[1]==NULL && cnt == 0){
+						cnt++;
+						char* token = new char[strlen(const_cast<char*>(files[0].c_str()))];
+						strcpy(token, files[0].c_str());
+						argv[argvChild.size()] = token;
+						execCmd(argv, fdCur, fdPrev, false);
+					}
+					else if(argv[1]!=NULL){
+						if(-1 == execCmd(argv, fdCur, fdPrev, false)){
+							return -1;
+						}
+					}
+
+					while(argvChild.size()!=1 && argvChild[argvChild.size()-1][0]!='-'){
+						argvChild.pop_back();
+					}
+					//clear argv
+					for(unsigned int j = 1; argv[j]!=NULL && argv[j][0]!='-'; j++){
+						argv[j]=NULL;
+					}
+				}
+				else if(files.size()==1 && cnt==0 && strcmp(argv[argc-2], "<")!=0 && strcmp(argv[argc-2], ">")!=0 && strcmp(argv[argc-2], ">>")!=0){
+					if(-1 == execCmd(argv, fdCur, fdPrev, false)){
+						return -1;
+					}
+				}
+				else if(files.size()>1){
+					for(unsigned int j = 1; j < files.size(); j++){
+						cnt++;
+						char* token = new char[strlen(const_cast<char*>(files[j].c_str()))];
+						strcpy(token, files[j].c_str());
+						argv[argvChild.size()]=token;	
+						//cerr << "calling execCmd on " << files[j] << endl;
+						if(execCmd(argv, fdCur, fdPrev, false)){
+							return -1;
+						}
+						while(argvChild.size()!=1 && argvChild[argvChild.size()-1][0]!='-'){
+							argvChild.pop_back();
+						}
+						//clear argv
+						for(unsigned int k = 1; argv[k]!=NULL && argv[k][0]!='-'; k++){
+							argv[k]=NULL;
+						}
+					}
+				}
+			}
+			if(strcmp(argv[prevPos], ">") == 0 || strcmp(argv[prevPos], ">>") == 0){
+				numG++;
+				if(files.size()==1 && argv[i+1]==NULL && strcmp(argv[i], destFile)!=0){ //last file in pipe seg, and not destFile
+					cnt++;
+					if(-1 == execCmd(argv, fdCur, fdPrev, false)){
+						return -1;
+					}
+				}
+
+				else if(files.size()==1 && seenRed && strcmp(argv[i],destFile)==0 && numL==0 && argv[1]==NULL && cnt==0 && strcmp(argv[0], "cat")==0){ //first and last element of pipe seg
+					string userInput;
+					if(-1 == dup2(savestdin, 0)){ //restore stdin
+						perror("dup2");
+					}
+					if(-1 == dup2(savestdout, 1)){//restore stdout
+						perror("dup2");
+					}
+
+					//deallocate any memory here
+					
+					while(1){	
+						getline(cin, userInput);
+						userInput += '\n';
+						//write to the file here
+						if(-1 == (fdGL = open(destFile, O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR))){
+							perror("open");
+						}
+						if(-1 == write(fdGL, const_cast<char*>(userInput.c_str()), userInput.size())){
+							perror("write");
+						}
+					}
+					//mimicking a ctrl c exit similar to bash's behavior
+				}
+
+				else if(argv[1]!=NULL){
+					if(-1 == execCmd(argv, fdCur, fdPrev, false)){
+						return -1;
+					}
+				}
+				else if(files.size()==1 && cnt==0 && strcmp(argv[argc-2], "<")!=0 && strcmp(argv[argc-2], ">")!=0 && strcmp(argv[argc-2], ">>")!=0){
+					if(-1 == execCmd(argv, fdCur, fdPrev, false)){
+						return -1;
+					}
+				}
+				
+				for(unsigned int j = 1; j < files.size(); j++){ //write to fdChild pipe
+					if(strcmp(files[j].c_str(), destFile)!=0){
+						cnt++;
+						char* token = new char[strlen(const_cast<char*>(files[j].c_str()))];
+						strcpy(token, files[j].c_str());
+						argv[argvChild.size()]=token;	
+						//cerr << "calling execCmd on " << files[j] << endl;
+						if(execCmd(argv, fdCur, fdPrev, false)==-1){
+							return -1;
+						}
+						while(argvChild.size()!=1 && argvChild[argvChild.size()-1][0]!='-'){
+							argvChild.pop_back();
+						}
+						//clear argv
+						for(unsigned int k = 1; argv[k]!=NULL && argv[k][0]!='-'; k++){
+							argv[k]=NULL;
+						}
+					}
+				}
+			}
+			files.clear();
+		}
+	
+		if(argv[i+1]==NULL){ //last phrase
+			//look for destination file to be written to
+			if((strcmp(argv[prevPos], ">")==0 || strcmp(argv[prevPos], "<")==0) && (-1 == (fdGL = open(destFile, O_WRONLY | O_TRUNC)))){	
+				perror("open");
+				exit(1);
+			}
+			else if (strcmp(argv[prevPos], ">>")==0 && (-1 == (fdGL = open(destFile, O_WRONLY | O_APPEND)))){
+				perror("open");
+				exit(1);
+			}
+
+			//source file
+			int size = 0;
+			char c[BUFSIZ];
+			if(-1 == (size = read(fdCur[RD], &c, sizeof(c)))){
+				perror("read");
+				exit(1);
+			}
+			if(-1 == write(fdGL, &c, size)){
+				perror("write");
+				exit(1);
+			}
+		}
+	}
+	return 1;
+	//deallocate char** argv
+	/*for(unsigned int i = 0; argv[i]!=NULL; i++){
+		delete[] argv[i];
+	}
+	delete[] argv;*/
+		
+	//deallocate vector<char**> cmdExec
+}
+
+void redirExec(vector<char**> argvMaster){
+	//saving stdin
+	int savestdin = 0;
+	if(-1 == (savestdin = dup(0))){ //saving stdin
+		perror("dup");
+		_exit(2);
+	}
+
+	//save stdout
+	int savestdout;
+	if(-1 == (savestdout = dup(1))){
+		perror("dup");
+	}
+
+	unsigned int nPS = argvMaster.size();
+	struct pStruct{ int fd[2]; };
+	vector<pStruct> pipes;
+	for(unsigned int i = 0; i<nPS-1; i++){
+		int fd[2];
+		pStruct fdObj;
+		if(-1 == pipe(fd)){
+			perror("pipe");
+		}
+		for(unsigned int i = 0; i<2; i++){
+			fdObj.fd[i] = fd[i];
+		}
+		pipes.push_back(fdObj);
+	}
+
+	cout << "number of pipes: " << pipes.size() << endl;
+
+	for(unsigned int i = 0; i<nPS; i++){
+		int pid = fork();
+		bool next = false;
+		if(-1 == pid){
+			perror("fork");
+			exit(1);
+		}
+		else if(pid == 0){ //child
+			if(i==0){
+				if(-1 == dup2(pipes[i].fd[WR], 1)){
+					perror("dup2");
+					cerr << __LINE__ << endl;
+				}
+			}
+			else if(i>0 && (i+1)<nPS){
+				if(-1 == dup2(pipes[i].fd[WR], 1)){
+					perror("dup2");
+					cerr << __LINE__ << endl;
+				}
+				if(-1 == dup2(pipes[i-1].fd[RD], 0)){
+					perror("dup2");
+					cerr << __LINE__ << endl;
+				}
+			}
+			else if(i>0 && (i+1)>=nPS){
+				//restore stdout
+				if(-1 == dup2(savestdout, 1)){//restore stdout
+					perror("dup2");
+					cerr << __LINE__ << endl;
+				}
+				if(-1 == dup2(pipes[i-1].fd[RD], 0)){
+					perror("dup2");
+					cerr << __LINE__ << endl;
+				}
+			}
+
+			//check if i/o redirection exists
+			bool redir = false;
+			for(unsigned int j = 0; argvMaster[i][j]!=NULL && !redir; j++){
+				if(hasText(argvMaster[i][j], "<") || hasText(argvMaster[i][j], ">")){
+					redir = true;
+				}
+			}
+
+			if(redir){
+				if(i==0){
+					io(argvMaster[i], pipes[i].fd, fdNULL);
+				}
+				if(i>0 && (i+1)<nPS){
+					io(argvMaster[i], pipes[i].fd, pipes[i-1].fd);
+				}
+				if((i+1)>=nPS){
+					io(argvMaster[i], fdNULL, pipes[i-1].fd);
+				}
+			}
+				
+			else if(!redir && -1 == execvp(argvMaster[i][0], argvMaster[i])){
+				perror("execvp");
+				_exit(2);
+			}
+		}
+		else if(pid > 0){ //parent
+			if(i!=0){
+				if(-1 == close(pipes[i-1].fd[RD])){
+					perror("close");
+				}
+				if(-1 == close(pipes[i-1].fd[WR])){
+					perror("close");
+				}
+			}
+			if((i+1)<nPS){ //continue forking
+				next = true;
+			}
+			else if((i+1)>=nPS && !next){ //last pipe segment
+				for(unsigned int j = 0; j<nPS-1; j++){
+					if(-1 == wait(0)){
+						perror("wait");
+					}
+				}
+			}
+		}
+	}
+}
+
+vector<char**> parsePipes(char* cmdB){
 	//parsing by pipes
 	string cmd = static_cast<string>(cmdB);
 	vector<string> cmdPiped;
@@ -161,18 +538,24 @@ int redir(char*cmdB){
 	}
 	cerr << endl;*/
 
-	vector<char**> cmdExec;
+	vector<char**> argvMaster;
 	for(unsigned int i = 0; i<cmdPiped.size(); i++){
-		cmdExec.push_back(parseSpace(cmdPiped[i].c_str()));
+		argvMaster.push_back(parseSpace(cmdPiped[i].c_str()));
 	}
 
 	//printing cmdExec;
-	/*for(unsigned int i = 0; i<cmdExec.size(); i++){
-		for(unsigned int j = 0; cmdExec[i][j]!=NULL; j++){
-			cerr << cmdExec[i][j] << endl;
+	for(unsigned int i = 0; i<argvMaster.size(); i++){
+		for(unsigned int j = 0; argvMaster[i][j]!=NULL; j++){
+			cerr << argvMaster[i][j] << endl;
 		}
-	}*/
+	}
 
+	return argvMaster;
+}
+
+int redir(char*cmdB){
+	vector<char**> argvMaster = parsePipes(cmdB);
+	
 	//saving stdin
 	int savestdin = 0;
 	if(-1 == (savestdin = dup(0))){ //saving stdin
@@ -186,332 +569,48 @@ int redir(char*cmdB){
 		perror("dup");
 	}
 
-	bool parentPipe = false;
-	int fdParent[2];
-	if(-1 == pipe(fdParent)){
-		perror("pipe");
-	}
-	if(cmdExec.size()>1){ //if there are segments of pipe, create fdParent[2]	
-		if(-1 == dup2(fdParent[RD], 0)){
-			perror("dup2");
-		}
-		parentPipe = true;
-	}
+	redirExec(argvMaster);
 
-
-	//executing by pipe segment
-	for(unsigned int i = 0; i<cmdExec.size(); i++){
-		//invalid >>>>>> <<<<<< >><<><><
-		for(unsigned int j = 0; cmdExec[i][j]!=NULL; j++){
-			if((hasText(cmdExec[i][j], "<") || hasText(cmdExec[i][j], ">")) && !(strcmp(cmdExec[i][j], ">")==0 || strcmp(cmdExec[i][j], ">>")==0 || strcmp(cmdExec[i][j], "<")==0)){
-				cerr << "rshell: syntax error near unexpected token '" << cmdExec[i][j] << "'" << endl;
-				exit(1);
-			}
-		}
-
-		vector<char*> argvChild; //executable commands
-		unsigned int pos = 0;
-		bool noIO = false;
-		for(; !noIO && cmdExec[i][pos]!=NULL && strcmp(cmdExec[i][pos], "<")!=0 && strcmp(cmdExec[i][pos], ">")!=0 && strcmp(cmdExec[i][pos], ">>")!=0; pos++){
-			argvChild.push_back(cmdExec[i][pos]);
-			if(cmdExec[i][pos+1]==NULL){
-				pos = 0;
-				noIO = true;
-			}
-		}
-		if(noIO){
-			pos = 0;
-		}
-		unsigned int prevPos = pos;
-		unsigned int firstAnglePos = pos;
-
-		//convert executable commands from vector<char*> to char**
-		char **argv = new char*[argvChild.size()+2];
-		for(unsigned int j = 0; j<argvChild.size(); j++){
-			argv[j] = argvChild[j];
-			if((j+1)==argvChild.size()){
-				argv[j+1] = NULL;
-				argv[j+2] = NULL;
-			}
-		}
-		
-		//loop iterations of < > and/or >>
-		unsigned int cnt = 0, numL = 0, numG = 0;
-		vector<string> files;
-
-		int fdChild[2];
-		if(-1 == pipe(fdChild)){
-			perror("pipe");
-		}
-		
-		//only enable pipe if there is such a file that is preceded by > && succeeded by either < || NULL
-		//find destination file
-		bool childPipe = false, seenRed = false;;
-		char* destFile;
-		unsigned int anglePos;
-		for(unsigned int j = 0; cmdExec[i][j]!=NULL; j++){
-			if(strcmp(cmdExec[i][j], ">") == 0 || strcmp(cmdExec[i][j], ">>") == 0){
-				childPipe = true;
-				seenRed = true;
-				anglePos = j;
-			}
-			else if(strcmp(cmdExec[i][j], "<") == 0 && seenRed){
-				destFile = cmdExec[i][anglePos+1];
-				seenRed = false;
-			}
-			else if(cmdExec[i][j+1] == NULL && seenRed){
-				destFile = cmdExec[i][anglePos+1];
-			}
-		}
-		
-		if(parentPipe && !childPipe){
-			dup2(fdParent[WR],fdChild[WR]);
-		}
-
-		//finding size of pipe segment and storing in argc
-		unsigned int argc = 0;
-		for(; cmdExec[i][argc]!=NULL; argc++){}
-		
-		unsigned int j = pos + 1;
-		if(pos==0){
-			j = 0;
-		}
-		for(; cmdExec[i][j]!=NULL; j++){
-			int fdGL;
-			if(argc>1 && hasText(cmdExec[i][j], "<") && hasText(cmdExec[i][j], ">")){
-				if(strcmp(cmdExec[i][j], "<")!=0 && strcmp(cmdExec[i][j], ">")!=0 && strcmp(cmdExec[i][j], ">>")!=0){
-					//check if file is an existing file
-					bool fileExists = true;
-					
-					if(-1 == (fdGL = open(cmdExec[i][j], O_RDONLY))){
-						//perror("open");
-						fileExists = false;
-						//status = -1;
-					}
-
-					if(fileExists){ //if is an existing file
-						if(-1 == close(fdGL)){
-							perror("close");
-							exit(1);
-						}
-						files.push_back(cmdExec[i][j]);
-					
-						if(strcmp(cmdExec[i][pos], ">") == 0 && files.size()==1){ //if prev >, trunc file
-							if(-1 == (fdGL = open(cmdExec[i][j], O_WRONLY | O_TRUNC))){
-								perror("open");
-							}
-							if(-1 == close(fdGL)){
-								perror("close");
-							}
-						}
-					}
-					else if(!fileExists){ //file doesn't exit
-						if(strcmp(cmdExec[i][pos], "<")==0 || ((strcmp(cmdExec[i][pos], ">")==0 || strcmp(cmdExec[i][pos], ">>")==0) && files.size()!=0)){
-							cerr << argv[0] << ": " << cmdExec[i][j] << ": No such file or directory" << endl;
-							//exit(1);
-						}
-						else if((strcmp(cmdExec[i][pos], ">")==0 || strcmp(cmdExec[i][pos], ">>")==0) && files.size()==0){ //add condition of parent pipe not enabled 
-							//create new file
-							if(-1 == (fdGL = open(cmdExec[i][j], O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR))){
-								perror("open");
-							}
-							else if(-1 == close(fdGL)){
-								perror("close");
-							}
-							files.push_back(cmdExec[i][j]);
-						}
-					}
-				}
-				if(!(strcmp(cmdExec[i][j], "<")!=0 && strcmp(cmdExec[i][j], ">")!=0 && strcmp(cmdExec[i][j], ">>")!=0) || cmdExec[i][j+1]==NULL){
-
-					prevPos = pos;
-					pos = j;
-					if(strcmp(cmdExec[i][prevPos], "<") == 0){
-						numL++;
-						if(strcmp(argv[0], "cat")==0 && files.size()==1 && (((numL==1 && numG==0 && argc-firstAnglePos==3) || cmdExec[i][j+1]==NULL) || (argv[1]!=NULL))){
-							if(argv[1]==NULL && cnt == 0){
-								cnt++;
-								char* token = new char[strlen(const_cast<char*>(files[0].c_str()))];
-								strcpy(token, files[0].c_str());
-								argv[argvChild.size()] = token;
-								execCmd(argv, false, fdChild, childPipe);
-							}
-							else if(argv[1]!=NULL){
-								if(-1 == execCmd(argv, false, fdChild, childPipe)){
-									return -1;
-								}
-							}
-
-							while(argvChild.size()!=1 && argvChild[argvChild.size()-1][0]!='-'){
-								argvChild.pop_back();
-							}
-							//clear argv
-							for(unsigned int a = 1; argv[a]!=NULL && argv[a][0]!='-'; a++){
-								argv[a]=NULL;
-							}
-						}
-						else if(files.size()==1 && cnt==0 && strcmp(cmdExec[i][argc-2], "<")!=0 && strcmp(cmdExec[i][argc-2], ">")!=0 && strcmp(cmdExec[i][argc-2], ">>")!=0){
-							if(-1 == execCmd(argv, false, fdChild, childPipe)){
-								return -1;
-							}
-						}
-						else if(files.size()>1){
-							for(unsigned int k = 1; k < files.size(); k++){
-								cnt++;
-								char* token = new char[strlen(const_cast<char*>(files[k].c_str()))];
-								strcpy(token, files[k].c_str());
-								argv[argvChild.size()]=token;	
-								//cerr << "calling execCmd on " << files[k] << endl;
-								if(execCmd(argv, false, fdChild, childPipe)==-1){
-									return -1;
-								}
-								while(argvChild.size()!=1 && argvChild[argvChild.size()-1][0]!='-'){
-									argvChild.pop_back();
-								}
-								//clear argv
-								for(unsigned int a = 1; argv[a]!=NULL && argv[a][0]!='-'; a++){
-									argv[a]=NULL;
-								}
-							}
-						}
-					}
-					if(strcmp(cmdExec[i][prevPos], ">") == 0 || strcmp(cmdExec[i][prevPos], ">>") == 0){
-						numG++;
-						if(files.size()==1 && cmdExec[i][j+1]==NULL && strcmp(cmdExec[i][j], destFile)!=0){ //last file in pipe seg, and not destFile
-							cnt++;
-							if(-1 == execCmd(argv, false, fdChild, childPipe)){
-								return -1;
-							}
-						}
-
-						else if(files.size()==1 && seenRed && strcmp(cmdExec[i][j],destFile)==0 && numL==0 && argv[1]==NULL && cnt==0 && strcmp(argv[0], "cat")==0){ //first and last element of pipe seg
-							string userInput;
-							if(-1 == dup2(savestdin, 0)){ //restore stdin
-								perror("dup2");
-							}
-							if(-1 == dup2(savestdout, 1)){//restore stdout
-								perror("dup2");
-							}
-
-							//deallocate any memory here
-							
-							while(1){	
-								getline(cin, userInput);
-								userInput += '\n';
-								//write to the file here
-								if(-1 == (fdGL = open(destFile, O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR))){
-									perror("open");
-								}
-								if(-1 == write(fdGL, const_cast<char*>(userInput.c_str()), userInput.size())){
-									perror("write");
-								}
-							}
-							//mimicking a ctrl c exit similar to bash's behavior
-						}
-
-						else if(argv[1]!=NULL){
-							if(-1 == execCmd(argv, false, fdChild, childPipe)){
-								return -1;
-							}
-						}
-						else if(files.size()==1 && cnt==0 && strcmp(cmdExec[i][argc-2], "<")!=0 && strcmp(cmdExec[i][argc-2], ">")!=0 && strcmp(cmdExec[i][argc-2], ">>")!=0){
-							if(-1 == execCmd(argv, false, fdChild, childPipe)){
-								return -1;
-							}
-						}
-						
-						for(unsigned int k = 1; k < files.size(); k++){ //write to fdChild pipe
-							if(strcmp(files[k].c_str(), destFile)!=0){
-								cnt++;
-								char* token = new char[strlen(const_cast<char*>(files[k].c_str()))];
-								strcpy(token, files[k].c_str());
-								argv[argvChild.size()]=token;	
-								//cerr << "calling execCmd on " << files[k] << endl;
-								if(execCmd(argv, false, fdChild, childPipe)==-1){
-									return -1;
-								}
-								while(argvChild.size()!=1 && argvChild[argvChild.size()-1][0]!='-'){
-									argvChild.pop_back();
-								}
-								//clear argv
-								for(unsigned int a = 1; argv[a]!=NULL && argv[a][0]!='-'; a++){
-									argv[a]=NULL;
-								}
-							}
-						}
-					}
-					files.clear();
-				}
-			}
-			else if(cmdExec[i+1]==NULL){ //last segment of pipe
-				if(!childPipe && (-1 == dup2(savestdout, 1))){//restore stdout
-					perror("dup2");
-				}
-				execCmd(argv, false, fdNULL, false);
-
-			}
-			else{ //normal command without i/o redirection
-				execCmd(argv, false, fdParent, parentPipe);
-			}
-			if(cmdExec[i][j+1]==NULL && childPipe){ //last phrase
-				//look for destination file to be written to
-				if((strcmp(cmdExec[i][prevPos], ">")==0 || strcmp(cmdExec[i][prevPos], "<")==0) && (-1 == (fdGL = open(destFile, O_WRONLY | O_TRUNC)))){	
-					perror("open");
-					exit(1);
-				}
-				else if (strcmp(cmdExec[i][prevPos], ">>")==0 && (-1 == (fdGL = open(destFile, O_WRONLY | O_APPEND)))){
-					perror("open");
-					exit(1);
-				}
-
-				//source file = fdChild[RD]
-				int size = 0;
-				char c[BUFSIZ];
-				if(-1 == (size = read(fdChild[RD], &c, sizeof(c)))){
-					perror("read");
-					exit(1);
-				}
-				if(-1 == write(fdGL, &c, size)){
-					perror("write");
-					exit(1);
-				}
-			}
-		}
-		//deallocate char** argv
-		for(unsigned int j = 0; argv[j]!=NULL; j++){
-			delete[] argv[j];
-		}
-		delete[] argv;
-	}
 	if(-1 == dup2(savestdin, 0)){ //restore stdin
 		perror("dup2");
 	}
 	if(-1 == dup2(savestdout, 1)){//restore stdout
 		perror("dup2");
 	}
-		
-	//deallocate vector<char**> cmdExec
-	
+
 	return 1;
 }
 									
-int execCmd(char** cmdD, bool dealloc, int (&fdChild)[2], bool pipe){ //process spawning
-	//restore stdin ?
-	if(pipe && (-1 == dup2(fdChild[WR], 1))){ //make stdout the write end of pipe fdChild
-		perror("dup2");
+int execCmd(char** argv, int (&fdCur)[2], int (&fdPrev)[2], bool dealloc){ //process spawning
+	if(fdCur!=fdNULL && fdPrev==fdNULL){ //first element
+		if(-1 == dup2(fdCur[WR], 1)){
+			perror("dup2");
+		}
+	}
+	else if(fdCur!=fdNULL && fdPrev!=fdNULL){ //element betwee first and last
+		if(-1 == dup2(fdCur[WR], 1)){
+			perror("dup2");
+		}
+		if(-1 == dup2(fdPrev[RD], 0)){
+			perror("dup2");
+		}
+	}
+	else if(fdCur==fdNULL && fdPrev!=fdNULL){ //last element
+		if(-1 == dup2(fdPrev[RD], 0)){
+			perror("dup2");
+		}
 	}
 
 	int status = 0;
 	if(exitSeen){
 		//deallocate cmdD
-		for(int i = 0; cmdD[i]!=NULL; i++){
-			delete[] cmdD[i];
+		for(int i = 0; argv[i]!=NULL; i++){
+			delete[] argv[i];
 		}
-		delete[] cmdD;		
+		delete[] argv;		
 		return -1;
 	}
 	exitSeen = false;
-	
 	
 	int pid = fork();
 	if(pid == -1){ //error
@@ -531,7 +630,7 @@ int execCmd(char** cmdD, bool dealloc, int (&fdChild)[2], bool pipe){ //process 
 				nonEx = true;
 			}
 		}*/
-		if(execvp(cmdD[0], cmdD) == -1){
+		if(execvp(argv[0], argv) == -1){
 			perror("error in execvp"); //status becomes 256/512
 			_exit(2);
 		}
@@ -539,10 +638,12 @@ int execCmd(char** cmdD, bool dealloc, int (&fdChild)[2], bool pipe){ //process 
 	}
 	else if(pid > 0){ //parent process
 		//cerr << "in parent" << endl;
-		if(wait(&status)==-1){		
-			perror("error in wait()");
-			_exit(2);
-		}
+		if(fdCur==fdNULL && fdPrev==fdNULL){
+			if(wait(&status)==-1){		
+				perror("wait");
+				_exit(2);
+			}
+		}	
 	}
 	//cout << "status: " << status << endl;
 	if(status!=0){ //command fails 
@@ -550,12 +651,12 @@ int execCmd(char** cmdD, bool dealloc, int (&fdChild)[2], bool pipe){ //process 
 		return -1;
 	}
 
-	//deallocate cmdD
+	//deallocate argv
 	if(dealloc){
-		for(int i = 0; cmdD[i]!=NULL; i++){
-			delete[] cmdD[i];
+		for(int i = 0; argv[i]!=NULL; i++){
+			delete[] argv[i];
 		}
-		delete[] cmdD;
+		delete[] argv;
 	}
 	
 	return status; //status defaults to 0 if successful
@@ -579,7 +680,7 @@ int cAND(vector<char*> &cmdC, char *cmdB, char **ptr){ //parse and execute && co
 	parseDelim(cmdC, cmdB, "&&", &*ptr);
 	int success = 1;
 	for(unsigned int i = 0; i<cmdC.size() && success!=-1; i++){
-		if(execCmd(parseSpace(cmdC[i]), true, fdNULL, false)==-1){ //command fails
+		if(execCmd(parseSpace(cmdC[i]), fdNULL, fdNULL, false)==-1){ //command fails
 			success = -1;
 		}
 	}
@@ -590,7 +691,7 @@ int cOR(vector<char*> &cmdC, char *cmdB, char **ptr){ //parse and execute || com
 	parseDelim(cmdC, cmdB, "||", &*ptr);
 	int success = -1;
 	for(unsigned int i = 0; i<cmdC.size() && success==-1; i++){
-		if(!execCmd(parseSpace(cmdC[i]), true, fdNULL, false)){ //command succeeds
+		if(!execCmd(parseSpace(cmdC[i]), fdNULL, fdNULL, false)){ //command succeeds
 			success = 1;
 		}
 	}
@@ -648,7 +749,7 @@ void parseMaster(char* cmdB){
 	}
 	else if(!hasText(cmdB, "&&") && !hasText(cmdB, "||")){
 		//execute
-		execCmd(parseSpace(cmdB), true, fdNULL, false);
+		execCmd(parseSpace(cmdB), fdNULL, fdNULL, false);
 	}
 	else if(hasText(cmdB, "&&") && !hasText(cmdB, "||")){ //only has &&
 		cAND(cmdC, cmdB, &ptr);
@@ -672,7 +773,7 @@ void parseMaster(char* cmdB){
 						succeed	= true;
 					}
 				}
-				else if(!execCmd(parseSpace(cmdC[i]), true, fdNULL, false)){
+				else if(!execCmd(parseSpace(cmdC[i]), fdNULL, fdNULL, false)){
 					succeed = true;
 				}
 			}
@@ -690,7 +791,7 @@ void parseMaster(char* cmdB){
 						succeed = false;
 					}
 				}
-				else if(execCmd(parseSpace(cmdC[i]), true, fdNULL, false)==-1){
+				else if(execCmd(parseSpace(cmdC[i]), fdNULL, fdNULL, true)==-1){
 					succeed = false;
 				}
 				cmdD.clear();
