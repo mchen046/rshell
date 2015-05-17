@@ -133,6 +133,24 @@ char** parseSpace(const char *cmd){
 
 int execCmd(char** argv, int (&fdCur)[2], int (&fdPrev)[2], bool dealloc); //process spawning
 
+char* findDestFile(char **argv, unsigned int &anglePos, bool &seenRed){ 
+	char* destFile = NULL;
+	for(unsigned int i = 0; argv[i]!=NULL; i++){
+		if(strcmp(argv[i], ">") == 0 || strcmp(argv[i], ">>") == 0){
+			seenRed = true;
+			anglePos = i;
+		}
+		else if(strcmp(argv[i], "<") == 0 && seenRed){
+			destFile = argv[anglePos+1];
+			seenRed = false;
+		}
+		else if(argv[i+1] == NULL && seenRed){
+			destFile = argv[anglePos+1];
+		}
+	}
+	return destFile;
+}
+
 int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 	//invalid >>>>>> <<<<<< >><<><><
 	for(unsigned int i = 0; argv[i]!=NULL; i++){
@@ -149,6 +167,7 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 	}
 	unsigned int prevPos = pos;
 	unsigned int firstAnglePos = pos;
+	unsigned int anglePos = 0;
 
 	//convert executable commands from vector<char*> to char**
 	unsigned int argc = 0;
@@ -168,23 +187,29 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 
 	//only enable pipe if there is such a file that is preceded by > && succeeded by either < || NULL
 	//find destination file
-	bool seenRed = false;;
-	char* destFile;
-	unsigned int anglePos;
-	for(unsigned int i = 0; argv[i]!=NULL; i++){
-		if(strcmp(argv[i], ">") == 0 || strcmp(argv[i], ">>") == 0){
-			seenRed = true;
-			anglePos = i;
-		}
-		else if(strcmp(argv[i], "<") == 0 && seenRed){
-			destFile = argv[anglePos+1];
-			seenRed = false;
-		}
-		else if(argv[i+1] == NULL && seenRed){
-			destFile = argv[anglePos+1];
+	bool seenRed = false;
+	char *destFile = findDestFile(argv, anglePos, seenRed);
+
+	if(destFile==NULL){
+		if(fdCur==fdNULL && fdPrev==fdNULL){
+			if(-1 == dup2(savestdout, 1)){//restore stdout
+				perror("dup2");
+			}
 		}
 	}
-	
+
+	//count number of < and > in command
+	unsigned cntG = 0;
+	unsigned cntL = 0;
+	for(unsigned int i = 0; argv[i]!=NULL; i++){
+		if(strcmp(argv[i], "<")==0){
+			cntL++;
+		}
+		else if(strcmp(argv[i], ">")==0){
+			cntG++;
+		}
+	}
+
 	bool nxtPipeSeg = false;
 	for(unsigned int i = pos + 1; argv[i]!=NULL && !nxtPipeSeg; i++){
 		int fdGL;
@@ -236,7 +261,7 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 			pos = i;
 			if(strcmp(argv[prevPos], "<") == 0){
 				numL++;
-				if(strcmp(argv[0], "cat")==0 && files.size()==1 && (((numL==1 && numG==0 && argc-firstAnglePos==3) || argv[i+1]==NULL) || (argv[1]!=NULL))){
+				if(strcmp(argv[0], "cat")==0 && files.size()==1 && (((numL==1 && numG==0 && argc-firstAnglePos==3) || argv[i+1]==NULL) || (argvExec[1]!=NULL))){
 					if(argvExec[1]==NULL && cnt == 0){
 						cnt++;
 						char* token = new char[strlen(const_cast<char*>(files[0].c_str()))];
@@ -258,11 +283,20 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 						argvExec[j]=NULL;
 					}
 				}
-				else if(files.size()==1 && cnt==0 && strcmp(argv[argc-2], "<")!=0 && strcmp(argv[argc-2], ">")!=0 && strcmp(argv[argc-2], ">>")!=0){
+				else if(files.size()==1 && cnt==0 && strcmp(argv[0], "cat")==0 && numL==cntL){
+					cnt++;
+					char* token = new char[strlen(const_cast<char*>(files[0].c_str()))];
+					strcpy(token, files[0].c_str());
+					argvExec[argvChild.size()] = token;
 					if(-1 == execCmd(argvExec, fdCur, fdPrev, false)){
 						return -1;
 					}
 				}
+				/*else if(files.size()==1 && cnt==0 && strcmp(argv[argc-2], "<")!=0 && strcmp(argv[argc-2], ">")!=0 && strcmp(argv[argc-2], ">>")!=0){
+					if(-1 == execCmd(argvExec, fdCur, fdPrev, false)){
+						return -1;
+					}
+				}*/
 				else if(files.size()>1){
 					for(unsigned int j = 1; j < files.size(); j++){
 						cnt++;
@@ -317,11 +351,11 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 					//mimicking a ctrl c exit similar to bash's behavior
 				}
 
-				else if(argvExec[1]!=NULL){
+				/*else if(argvExec[1]!=NULL){
 					if(-1 == execCmd(argvExec, fdCur, fdPrev, false)){
 						return -1;
 					}
-				}
+				}*/
 				/*else if(files.size()==1 && cnt==0 && strcmp(argv[argc-2], "<")!=0 && strcmp(argv[argc-2], ">")!=0 && strcmp(argv[argc-2], ">>")!=0){
 					if(-1 == execCmd(argvExec, fdCur, fdPrev, false)){
 						return -1;
@@ -353,25 +387,27 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 	
 		if(argv[i+1]==NULL){ //last phrase
 			//look for destination file to be written to
-			if((strcmp(argv[prevPos], ">")==0 || strcmp(argv[prevPos], "<")==0) && (-1 == (fdGL = open(destFile, O_WRONLY | O_TRUNC)))){	
-				perror("open");
-				exit(1);
-			}
-			else if (strcmp(argv[prevPos], ">>")==0 && (-1 == (fdGL = open(destFile, O_WRONLY | O_APPEND)))){
-				perror("open");
-				exit(1);
-			}
+			if(destFile!=NULL){
+				if((strcmp(argv[prevPos], ">")==0 || strcmp(argv[prevPos], "<")==0) && (-1 == (fdGL = open(destFile, O_WRONLY | O_TRUNC)))){	
+					perror("open");
+					exit(1);
+				}
+				else if (strcmp(argv[prevPos], ">>")==0 && (-1 == (fdGL = open(destFile, O_WRONLY | O_APPEND)))){
+					perror("open");
+					exit(1);
+				}
 
-			//source file
-			int size = 0;
-			char c[BUFSIZ];
-			if(-1 == (size = read(fdCur[RD], &c, sizeof(c)))){
-				perror("read");
-				exit(1);
-			}
-			if(-1 == write(fdGL, &c, size)){
-				perror("write");
-				exit(1);
+				//source file
+				int size = 0;
+				char c[BUFSIZ];
+				if(-1 == (size = read(fdCur[RD], &c, sizeof(c)))){
+					perror("read");
+					exit(1);
+				}
+				if(-1 == write(fdGL, &c, size)){
+					perror("write");
+					exit(1);
+				}
 			}
 		}
 	}
@@ -421,6 +457,12 @@ void redirExec(vector<char**> argvMaster){
 		/*if(-1 == dup2(pipes[0].fd[WR], 1)){
 			perror("dup2");
 		}*/
+		unsigned int a;
+		bool cond;
+		if(NULL == findDestFile(argvMaster[0], a, cond)){
+			pipes[0].fd[0] = 0;
+			pipes[0].fd[1] = 0;
+		}
 		io(argvMaster[0], pipes[0].fd, fdNULL);
 	}
 	else for(unsigned int i = 0; i<nPS; i++){
@@ -588,25 +630,27 @@ int execCmd(char** argv, int (&fdCur)[2], int (&fdPrev)[2], bool dealloc){ //pro
 	if(fdCur!=fdNULL && fdPrev==fdNULL){ //first element
 		if(-1 == dup2(fdCur[WR], 1)){
 			perror("dup2");
-		}
-		if(-1 == close(fdCur[RD])){
-			perror("close");
+			cerr << __LINE__ << endl;
 		}
 	}
 	else if(fdCur!=fdNULL && fdPrev!=fdNULL){ //element between first and last
 		if(-1 == dup2(fdCur[WR], 1)){
 			perror("dup2");
+			cerr << __LINE__ << endl;
 		}
 		if(-1 == dup2(fdPrev[RD], 0)){
 			perror("dup2");
+			cerr << __LINE__ << endl;
 		}
 	}
 	else if(fdCur==fdNULL && fdPrev!=fdNULL){ //last element
 		if(-1 == dup2(fdPrev[RD], 0)){
 			perror("dup2");
+			cerr << __LINE__ << endl;
 		}
 		if(-1 == close(fdPrev[WR])){
 			perror("close");
+			cerr << __LINE__ << endl;
 		}
 	}
 
@@ -647,12 +691,10 @@ int execCmd(char** argv, int (&fdCur)[2], int (&fdPrev)[2], bool dealloc){ //pro
 	}
 	else if(pid > 0){ //parent process
 		//cerr << "in parent" << endl;
-		if(fdCur==fdNULL && fdPrev==fdNULL){
-			if(wait(&status)==-1){		
-				perror("wait");
-				_exit(2);
-			}
-		}	
+		if(wait(&status)==-1){		
+			perror("wait");
+			_exit(2);
+		}
 	}
 	//cout << "status: " << status << endl;
 	if(status!=0){ //command fails 
