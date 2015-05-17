@@ -131,7 +131,7 @@ char** parseSpace(const char *cmd){
 
 int execCmd(char** argv, int (&fdCur)[2], int (&fdPrev)[2], bool dealloc); //process spawning
 
-int io(char** argv2, int (&fdCur)[2], int(&fdPrev)[2]){
+int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 	//saving stdin
 	int savestdin = 0;
 	if(-1 == (savestdin = dup(0))){ //saving stdin
@@ -145,29 +145,29 @@ int io(char** argv2, int (&fdCur)[2], int(&fdPrev)[2]){
 		perror("dup");
 	}
 	//invalid >>>>>> <<<<<< >><<><><
-	for(unsigned int i = 0; argv2[i]!=NULL; i++){
-		if((hasText(argv2[i], "<") || hasText(argv2[i], ">")) && !(strcmp(argv2[i], ">")==0 || strcmp(argv2[i], ">>")==0 || strcmp(argv2[i], "<")==0)){
-			cerr << "rshell: syntax error near unexpected token '" << argv2[i] << "'" << endl;
+	for(unsigned int i = 0; argv[i]!=NULL; i++){
+		if((hasText(argv[i], "<") || hasText(argv[i], ">")) && !(strcmp(argv[i], ">")==0 || strcmp(argv[i], ">>")==0 || strcmp(argv[i], "<")==0)){
+			cerr << "rshell: syntax error near unexpected token '" << argv[i] << "'" << endl;
 			exit(1);
 		}
 	}
 
 	vector<char*> argvChild; //single executable command
 	unsigned int pos = 0;
-	for(; argv2[pos]!=NULL && strcmp(argv2[pos], "<")!=0 && strcmp(argv2[pos], ">")!=0 && strcmp(argv2[pos], ">>")!=0; pos++){
-		argvChild.push_back(argv2[pos]);
+	for(; argv[pos]!=NULL && strcmp(argv[pos], "<")!=0 && strcmp(argv[pos], ">")!=0 && strcmp(argv[pos], ">>")!=0; pos++){
+		argvChild.push_back(argv[pos]);
 	}
 	unsigned int prevPos = pos;
 	unsigned int firstAnglePos = pos;
 
 	//convert executable commands from vector<char*> to char**
 	unsigned int argc = 0;
-	char **argv = new char*[argvChild.size()+2];
-	for(unsigned int i = 0; i<argvChild.size(); i++){
-		argv[i] = argvChild[i];
+	char **argvExec = new char*[argvChild.size()+2];
+	for(unsigned  int i = 0; i<argvChild.size(); i++){
+		argvExec[i] = argvChild[i];
 		if((i+1)==argvChild.size()){
-			argv[i+1] = NULL;
-			argv[i+2] = NULL;
+			argvExec[i+1] = NULL;
+			argvExec[i+2] = NULL;
 		}
 		argc++;
 	}
@@ -195,7 +195,6 @@ int io(char** argv2, int (&fdCur)[2], int(&fdPrev)[2]){
 		}
 	}
 	
-
 	bool nxtPipeSeg = false;
 	for(unsigned int i = pos + 1; argv[i]!=NULL && !nxtPipeSeg; i++){
 		int fdGL;
@@ -252,11 +251,11 @@ int io(char** argv2, int (&fdCur)[2], int(&fdPrev)[2]){
 						cnt++;
 						char* token = new char[strlen(const_cast<char*>(files[0].c_str()))];
 						strcpy(token, files[0].c_str());
-						argv[argvChild.size()] = token;
-						execCmd(argv, fdCur, fdPrev, false);
+						argvExec[argvChild.size()] = token;
+						execCmd(argvExec, fdCur, fdPrev, false);
 					}
-					else if(argv[1]!=NULL){
-						if(-1 == execCmd(argv, fdCur, fdPrev, false)){
+					else if(argvExec[1]!=NULL){
+						if(-1 == execCmd(argvExec, fdCur, fdPrev, false)){
 							return -1;
 						}
 					}
@@ -265,12 +264,12 @@ int io(char** argv2, int (&fdCur)[2], int(&fdPrev)[2]){
 						argvChild.pop_back();
 					}
 					//clear argv
-					for(unsigned int j = 1; argv[j]!=NULL && argv[j][0]!='-'; j++){
-						argv[j]=NULL;
+					for(unsigned int j = 1; argvExec[j]!=NULL && argvExec[j][0]!='-'; j++){
+						argvExec[j]=NULL;
 					}
 				}
 				else if(files.size()==1 && cnt==0 && strcmp(argv[argc-2], "<")!=0 && strcmp(argv[argc-2], ">")!=0 && strcmp(argv[argc-2], ">>")!=0){
-					if(-1 == execCmd(argv, fdCur, fdPrev, false)){
+					if(-1 == execCmd(argvExec, fdCur, fdPrev, false)){
 						return -1;
 					}
 				}
@@ -279,17 +278,17 @@ int io(char** argv2, int (&fdCur)[2], int(&fdPrev)[2]){
 						cnt++;
 						char* token = new char[strlen(const_cast<char*>(files[j].c_str()))];
 						strcpy(token, files[j].c_str());
-						argv[argvChild.size()]=token;	
+						argvExec[argvChild.size()]=token;	
 						//cerr << "calling execCmd on " << files[j] << endl;
-						if(execCmd(argv, fdCur, fdPrev, false)){
+						if(execCmd(argvExec, fdCur, fdPrev, false)){
 							return -1;
 						}
 						while(argvChild.size()!=1 && argvChild[argvChild.size()-1][0]!='-'){
 							argvChild.pop_back();
 						}
 						//clear argv
-						for(unsigned int k = 1; argv[k]!=NULL && argv[k][0]!='-'; k++){
-							argv[k]=NULL;
+						for(unsigned int k = 1; argvExec[k]!=NULL && argvExec[k][0]!='-'; k++){
+							argvExec[k]=NULL;
 						}
 					}
 				}
@@ -298,7 +297,7 @@ int io(char** argv2, int (&fdCur)[2], int(&fdPrev)[2]){
 				numG++;
 				if(files.size()==1 && argv[i+1]==NULL && strcmp(argv[i], destFile)!=0){ //last file in pipe seg, and not destFile
 					cnt++;
-					if(-1 == execCmd(argv, fdCur, fdPrev, false)){
+					if(-1 == execCmd(argvExec, fdCur, fdPrev, false)){
 						return -1;
 					}
 				}
@@ -328,13 +327,13 @@ int io(char** argv2, int (&fdCur)[2], int(&fdPrev)[2]){
 					//mimicking a ctrl c exit similar to bash's behavior
 				}
 
-				else if(argv[1]!=NULL){
-					if(-1 == execCmd(argv, fdCur, fdPrev, false)){
+				else if(argvExec[1]!=NULL){
+					if(-1 == execCmd(argvExec, fdCur, fdPrev, false)){
 						return -1;
 					}
 				}
 				else if(files.size()==1 && cnt==0 && strcmp(argv[argc-2], "<")!=0 && strcmp(argv[argc-2], ">")!=0 && strcmp(argv[argc-2], ">>")!=0){
-					if(-1 == execCmd(argv, fdCur, fdPrev, false)){
+					if(-1 == execCmd(argvExec, fdCur, fdPrev, false)){
 						return -1;
 					}
 				}
@@ -344,17 +343,17 @@ int io(char** argv2, int (&fdCur)[2], int(&fdPrev)[2]){
 						cnt++;
 						char* token = new char[strlen(const_cast<char*>(files[j].c_str()))];
 						strcpy(token, files[j].c_str());
-						argv[argvChild.size()]=token;	
+						argvExec[argvChild.size()]=token;	
 						//cerr << "calling execCmd on " << files[j] << endl;
-						if(execCmd(argv, fdCur, fdPrev, false)==-1){
+						if(execCmd(argvExec, fdCur, fdPrev, false)==-1){
 							return -1;
 						}
 						while(argvChild.size()!=1 && argvChild[argvChild.size()-1][0]!='-'){
 							argvChild.pop_back();
 						}
 						//clear argv
-						for(unsigned int k = 1; argv[k]!=NULL && argv[k][0]!='-'; k++){
-							argv[k]=NULL;
+						for(unsigned int k = 1; argvExec[k]!=NULL && argvExec[k][0]!='-'; k++){
+							argvExec[k]=NULL;
 						}
 					}
 				}
@@ -410,6 +409,8 @@ void redirExec(vector<char**> argvMaster){
 		perror("dup");
 	}
 
+	vector<int> pids;
+
 	unsigned int nPS = argvMaster.size();
 	struct pStruct{ int fd[2]; };
 	vector<pStruct> pipes;
@@ -424,18 +425,38 @@ void redirExec(vector<char**> argvMaster){
 		}
 		pipes.push_back(fdObj);
 	}
-
+	
+	if(pipes.size()==0){
+		int fd[2];
+		pStruct fdObj;
+		if(-1 == pipe(fd)){
+			perror("pipe");
+		}
+		for(unsigned int i = 0; i<2; i++){
+			fdObj.fd[i] = fd[i];
+		}
+		pipes.push_back(fdObj);
+	}
+		
 	cout << "number of pipes: " << pipes.size() << endl;
 
-	for(unsigned int i = 0; i<nPS; i++){
+	if(argvMaster.size()==1){
+		/*if(-1 == dup2(pipes[0].fd[WR], 1)){
+			perror("dup2");
+		}*/
+		io(argvMaster[0], pipes[0].fd, fdNULL);
+	}
+	else for(unsigned int i = 0; i<nPS; i++){
+		int status = 0;
 		int pid = fork();
+		pids.push_back(pid);
 		bool next = false;
 		if(-1 == pid){
 			perror("fork");
 			exit(1);
 		}
 		else if(pid == 0){ //child
-			if(i==0){
+			if(i==0 && argvMaster.size()>1){
 				if(-1 == dup2(pipes[i].fd[WR], 1)){
 					perror("dup2");
 					cerr << __LINE__ << endl;
@@ -487,6 +508,7 @@ void redirExec(vector<char**> argvMaster){
 				perror("execvp");
 				_exit(2);
 			}
+			_exit(2);
 		}
 		else if(pid > 0){ //parent
 			if(i!=0){
@@ -501,8 +523,8 @@ void redirExec(vector<char**> argvMaster){
 				next = true;
 			}
 			else if((i+1)>=nPS && !next){ //last pipe segment
-				for(unsigned int j = 0; j<nPS-1; j++){
-					if(-1 == wait(0)){
+				for(unsigned int j = 0; j<pids.size(); j++){
+					if(-1 == waitpid(pids[i], &status, WUNTRACED)){
 						perror("wait");
 					}
 				}
@@ -587,7 +609,7 @@ int execCmd(char** argv, int (&fdCur)[2], int (&fdPrev)[2], bool dealloc){ //pro
 			perror("dup2");
 		}
 	}
-	else if(fdCur!=fdNULL && fdPrev!=fdNULL){ //element betwee first and last
+	else if(fdCur!=fdNULL && fdPrev!=fdNULL){ //element between first and last
 		if(-1 == dup2(fdCur[WR], 1)){
 			perror("dup2");
 		}
@@ -850,6 +872,9 @@ int main(){
 			bool cmdBDone = false;
 			while(!cmdBDone){
 				parseMaster(cmdB);	
+				//int fdCur[2];
+				//pipe(fdCur);
+				//io(parsePipes(cmdB)[0], fdCur, fdNULL);
 				cmdB = strtok(NULL, ";");
 				if(cmdB==NULL){
 					cmdBDone = true;
