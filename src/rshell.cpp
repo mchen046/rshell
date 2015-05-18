@@ -220,7 +220,7 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 			bool fileExists = true;
 			
 			if(-1 == (fdGL = open(argv[i], O_RDONLY))){
-				//perror("open");
+				perror("open");
 				fileExists = false;
 				//status = -1;
 			}
