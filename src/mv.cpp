@@ -31,7 +31,7 @@ int main(int argc, char ** argv){
 	}
 
 	vector<string> holder;
-	for(unsigned int i = 1; i<argc; i++){
+	for(int i = 1; i<argc; i++){
 		holder.push_back(string(argv[i]));
 	}
 	
