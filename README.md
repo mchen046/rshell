@@ -131,7 +131,7 @@ The implemented subpart of the GNU ls command only prints in the `month date tim
 
 **7. executing ls on an existing file**
 
-When ls is called on an existing file, GNU ls prints out the file''s path.
+When ls is called on an existing file, GNU ls prints out the file's path.
 
 The implemented subpart of the GNU ls command is not able to execute on an existing file.
 
@@ -139,7 +139,7 @@ The implemented subpart of the GNU ls command is not able to execute on an exist
 
 **1. `cat > eif`**
 
-Standalone commands similar to cat > eif that wait on user input results in an input stream that can only be terminated by the ctrl c signal. Since proper signal capturing has not yet been implemented, the only way for the user to exit the input stream is by inputting ctrl c. However, this also ends the rshell program.
+Standalone commands similar to `cat > eif` that wait on user input results in an input stream that can only be terminated by the ctrl c signal. Since proper signal capturing has not yet been implemented, the only way for the user to exit the input stream is by inputting ctrl c. However, this also ends the rshell program.
 
 **2. invalid commands after a valid command in a command with multiple pipes**
 
