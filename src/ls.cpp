@@ -371,6 +371,7 @@ bool exists(const string file){
 	if(NULL == (dirp = opendir(dir))){
 		//cout << "ls: cannot access " << file << ": No such file or directory" << endl;
 		//perror("opendir");
+		delete[] dir;
 		return false;
 	}
 
