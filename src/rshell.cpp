@@ -191,7 +191,9 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 	char *destFile = findDestFile(argv, anglePos, seenRed);
 
 	if(destFile==NULL){
+		//cerr << __LINE__ << endl;
 		if(fdCur==fdNULL && fdPrev==fdNULL){
+			//cerr << __LINE__ << endl;
 			if(-1 == dup2(savestdout, 1)){//restore stdout
 				perror("dup2");
 			}
@@ -240,11 +242,11 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 				}
 			}
 			else if(!fileExists){ //file doesn't exit
-				if(strcmp(argv[pos], "<")==0 || ((strcmp(argv[pos], ">")==0 || strcmp(argv[pos], ">>")==0) && files.size()!=0)){
+				/*if(strcmp(argv[pos], "<")==0 || ((strcmp(argv[pos], ">")==0 || strcmp(argv[pos], ">>")==0) && files.size()!=0)){
 					cerr << argv[0] << ": " << argv[i] << ": No such file or directory" << endl;
 					//exit(1);
-				}
-				else if((strcmp(argv[pos], ">")==0 || strcmp(argv[pos], ">>")==0) && files.size()==0){ //add condition of parent pipe not enabled 
+				}*/
+				if((strcmp(argv[pos], ">")==0 || strcmp(argv[pos], ">>")==0) && files.size()==0){ //add condition of parent pipe not enabled 
 					//create new file
 					if(-1 == (fdGL = open(argv[i], O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR))){
 						perror("open");
@@ -252,8 +254,8 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 					else if(-1 == close(fdGL)){
 						perror("close");
 					}
-					files.push_back(argv[i]);
 				}
+				files.push_back(argv[i]);
 			}
 		}
 		if(!(strcmp(argv[i], "<")!=0 && strcmp(argv[i], ">")!=0 && strcmp(argv[i], ">>")!=0) || argv[i+1]==NULL){
@@ -270,6 +272,7 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 						execCmd(argvExec, fdCur, fdPrev, false);
 					}
 					else if(argvExec[1]!=NULL){
+						cnt++;
 						if(-1 == execCmd(argvExec, fdCur, fdPrev, false)){
 							return -1;
 						}
@@ -279,8 +282,11 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 						argvChild.pop_back();
 					}
 					//clear argv
-					for(unsigned int j = 1; argvExec[j]!=NULL && argvExec[j][0]!='-'; j++){
-						argvExec[j]=NULL;
+					for(unsigned int k = 1; argvExec[k]!=NULL; k++){
+						if(argvExec[k][0]!='-'){
+							delete[] argvExec[k];
+							argvExec[k]=NULL;
+						}
 					}
 				}
 				else if(files.size()==1 && cnt==0 && strcmp(argv[0], "cat")==0 && numL==cntL){
@@ -311,8 +317,11 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 							argvChild.pop_back();
 						}
 						//clear argv
-						for(unsigned int k = 1; argvExec[k]!=NULL && argvExec[k][0]!='-'; k++){
-							argvExec[k]=NULL;
+						for(unsigned int k = 1; argvExec[k]!=NULL; k++){
+							if(argvExec[k][0]!='-'){
+								delete[] argvExec[k];
+								argvExec[k]=NULL;
+							}
 						}
 					}
 				}
@@ -326,7 +335,7 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 					}
 				}
 
-				else if(files.size()==1 && seenRed && strcmp(argv[i],destFile)==0 && numL==0 && argv[1]==NULL && cnt==0 && strcmp(argv[0], "cat")==0){ //first and last element of pipe seg
+				else if(files.size()==1 && seenRed && strcmp(argv[i],destFile)==0 && numL==0 && argvExec[1]==NULL && cnt==0 && strcmp(argv[0], "cat")==0){ //first and last element of pipe seg
 					string userInput;
 					if(-1 == dup2(savestdin, 0)){ //restore stdin
 						perror("dup2");
@@ -350,12 +359,46 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 					}
 					//mimicking a ctrl c exit similar to bash's behavior
 				}
-
-				/*else if(argvExec[1]!=NULL){
+				/*else if(files.size()==1 && numL==0 && numG==cntG && cnt==0 && cntL==0){ //cmd > nof
+					if(fdCur!=fdNULL && fdPrev==fdNULL){ //no previous input but has destFile
+						string userInput;
+						if(-1 == dup2(savestdin, 0)){ //restore stdin
+							perror("dup2");
+						}
+						while(1){
+							getline(cin, userInput);
+							char* token = new char[strlen(const_cast<char*>(userInput.c_str()))];
+							strcpy(token, userInput.c_str());
+							argvExec[argvChild.size()]=token;	
+							if(execCmd(argvExec, fdCur, fdPrev, false)){
+								return -1;
+							}
+							//write to the file
+							if(-1 == (fdGL = open(destFile, O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR))){
+								perror("open");
+							}
+							//source file
+							int size = 0;
+							char c[BUFSIZ];
+							if(-1 == (size = read(fdCur[RD], &c, sizeof(c)))){
+								perror("read");
+								exit(1);
+							}
+							if(-1 == write(fdGL, &c, size)){
+								perror("write");
+								exit(1);
+							}
+						}
+					}
+				}*/
+				
+									
+				else if(argvExec[1]!=NULL && files.size()==1 && cnt==0){
+					cnt++;
 					if(-1 == execCmd(argvExec, fdCur, fdPrev, false)){
 						return -1;
 					}
-				}*/
+				}
 				/*else if(files.size()==1 && cnt==0 && strcmp(argv[argc-2], "<")!=0 && strcmp(argv[argc-2], ">")!=0 && strcmp(argv[argc-2], ">>")!=0){
 					if(-1 == execCmd(argvExec, fdCur, fdPrev, false)){
 						return -1;
@@ -369,15 +412,18 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 						strcpy(token, files[j].c_str());
 						argvExec[argvChild.size()]=token;	
 						//cerr << "calling execCmd on " << files[j] << endl;
-						if(execCmd(argvExec, fdCur, fdPrev, false)==-1){
+						if(execCmd(argvExec, fdCur, fdPrev, false)==-1 && (j+1)==files.size()){
 							return -1;
 						}
 						while(argvChild.size()!=1 && argvChild[argvChild.size()-1][0]!='-'){
 							argvChild.pop_back();
 						}
 						//clear argv
-						for(unsigned int k = 1; argvExec[k]!=NULL && argvExec[k][0]!='-'; k++){
-							argvExec[k]=NULL;
+						for(unsigned int k = 1; argvExec[k]!=NULL; k++){
+							if(argvExec[k][0]!='-'){
+								delete[] argvExec[k];
+								argvExec[k]=NULL;
+							}
 						}
 					}
 				}
@@ -387,7 +433,7 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 	
 		if(argv[i+1]==NULL){ //last phrase
 			//look for destination file to be written to
-			if(destFile!=NULL){
+			if(destFile!=NULL && cnt!=0 && fdCur!=fdNULL){
 				if((strcmp(argv[prevPos], ">")==0 || strcmp(argv[prevPos], "<")==0) && (-1 == (fdGL = open(destFile, O_WRONLY | O_TRUNC)))){	
 					perror("open");
 					exit(1);
@@ -401,6 +447,7 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 				int size = 0;
 				char c[BUFSIZ];
 				if(-1 == (size = read(fdCur[RD], &c, sizeof(c)))){
+					//cerr << __LINE__ << endl;
 					perror("read");
 					exit(1);
 				}
@@ -411,13 +458,13 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 			}
 		}
 	}
-	return 1;
-	//deallocate char** argv
-	/*for(unsigned int i = 0; argv[i]!=NULL; i++){
-		delete[] argv[i];
+	//deallocate char** argvExec
+	for(unsigned int i = 0; argvExec[i]!=NULL; i++){
+		delete[] argvExec[i];
 	}
-	delete[] argv;*/
+	delete[] argvExec;
 		
+	return 1;
 	//deallocate vector<char**> cmdExec
 }
 
@@ -427,7 +474,7 @@ void redirExec(vector<char**> argvMaster){
 	unsigned int nPS = argvMaster.size();
 	struct pStruct{ int fd[2]; };
 	vector<pStruct> pipes;
-	for(unsigned int i = 0; i<nPS-1; i++){
+	for(unsigned int i = 0; i<nPS; i++){
 		int fd[2];
 		pStruct fdObj;
 		if(-1 == pipe(fd)){
@@ -451,8 +498,8 @@ void redirExec(vector<char**> argvMaster){
 		pipes.push_back(fdObj);
 	}
 		
-	cout << "number of pipes: " << pipes.size() << endl;
-
+	//cout << "number of pipes: " << pipes.size() << endl;
+	bool noRD = false;
 	if(argvMaster.size()==1){
 		/*if(-1 == dup2(pipes[0].fd[WR], 1)){
 			perror("dup2");
@@ -466,6 +513,20 @@ void redirExec(vector<char**> argvMaster){
 		io(argvMaster[0], pipes[0].fd, fdNULL);
 	}
 	else for(unsigned int i = 0; i<nPS; i++){
+
+		unsigned int a;
+		
+		if(i > 0 && NULL != findDestFile(argvMaster[i-1], a, noRD)){ //if destFile is not NULL && not last element
+			//cerr << __LINE__ << endl;
+			pipes[i-1].fd[RD] = fdNULL[RD];
+			pipes[i-1].fd[WR] = fdNULL[WR];
+		}
+		/*else{
+			leave = false;
+		}*/
+
+		//if(!leave){
+
 		int status = 0;
 		int pid = fork();
 		pids.push_back(pid);
@@ -475,50 +536,6 @@ void redirExec(vector<char**> argvMaster){
 			exit(1);
 		}
 		else if(pid == 0){ //child
-			if(i==0 && argvMaster.size()>1){
-				if(-1 == dup2(pipes[i].fd[WR], 1)){
-					perror("dup2");
-					cerr << __LINE__ << endl;
-				}
-				if(-1 == close(pipes[i].fd[RD])){
-					perror("close");
-					cerr << __LINE__ << endl;
-				}
-			}
-			else if(i>0 && (i+1)<nPS){
-				if(-1 == dup2(pipes[i].fd[WR], 1)){
-					perror("dup2");
-					cerr << __LINE__ << endl;
-				}
-				if(-1 == close(pipes[i].fd[RD])){
-					perror("close");
-					cerr << __LINE__ << endl;
-				}
-				if(-1 == dup2(pipes[i-1].fd[RD], 0)){
-					perror("dup2");
-					cerr << __LINE__ << endl;
-				}
-				if(-1 == close(pipes[i-1].fd[WR])){
-					perror("close");
-					cerr << __LINE__ << endl;
-				}
-			}
-			else if(i>0 && (i+1)>=nPS){
-				//restore stdout
-				if(-1 == dup2(savestdout, 1)){//restore stdout
-					perror("dup2");
-					cerr << __LINE__ << endl;
-				}
-				if(-1 == dup2(pipes[i-1].fd[RD], 0)){
-					perror("dup2");
-					cerr << __LINE__ << endl;
-				}
-				if(-1 == close(pipes[i-1].fd[WR])){
-					perror("close");
-					cerr << __LINE__ << endl;
-				}
-			}
-
 			//check if i/o redirection exists
 			bool redir = false;
 			for(unsigned int j = 0; argvMaster[i][j]!=NULL && !redir; j++){
@@ -527,15 +544,78 @@ void redirExec(vector<char**> argvMaster){
 				}
 			}
 
+			/*cerr << __LINE__ << endl; cerr << "i: " << i << endl;
+			cerr << "fdCur[RD]: " << pipes[i].fd[RD] << endl;
+			cerr << "fdCur[WR]: " << pipes[i].fd[WR] << endl;
+			if(i>0){
+				cerr << "fdPrev[RD]: " << pipes[i-1].fd[RD] << endl;
+				cerr << "fdPrev[WR]: " << pipes[i-1].fd[WR] << endl;
+			}*/
+
+			if(i==0 && argvMaster.size()>1){
+				//cerr << __LINE__ << endl;
+				if(-1 == dup2(pipes[i].fd[WR], 1)){
+					perror("dup2");
+					//cerr << __LINE__ << endl;
+				}
+				if(-1 == close(pipes[i].fd[RD])){
+					perror("close");
+					//cerr << __LINE__ << endl;
+				}
+			}
+			else if(i>0 && (i+1)<nPS){
+				//cerr << __LINE__ << endl;
+				if(-1 == dup2(pipes[i].fd[WR], 1)){
+					perror("dup2");
+					//cerr << __LINE__ << endl;
+				}
+				if(-1 == close(pipes[i].fd[RD])){
+					perror("close");
+					//cerr << __LINE__ << endl;
+				}
+				if(-1 == dup2(pipes[i-1].fd[RD], 0)){
+					perror("dup2");
+					//cerr << __LINE__ << endl;
+				}
+				if(-1 == close(pipes[i-1].fd[WR])){
+					perror("close");
+					//cerr << __LINE__ << endl;
+				}
+			}
+			else if(!redir && i>0 && (i+1)>=nPS){
+				//restore stdout
+				//cerr << __LINE__ << endl;
+				if(-1 == dup2(savestdout, 1)){//restore stdout
+					perror("dup2");
+					//cerr << __LINE__ << endl;
+				}
+				if(-1 == dup2(pipes[i-1].fd[RD], 0)){
+					perror("dup2");
+					//cerr << __LINE__ << endl;
+				}
+				if(-1 == close(pipes[i-1].fd[WR])){
+					perror("close");
+					//cerr << __LINE__ << endl;
+				}
+			}
+
+
 			if(redir){
 				if(i==0){
+					//cerr << __LINE__ << endl;
 					io(argvMaster[i], pipes[i].fd, fdNULL);
 				}
-				if(i>0 && (i+1)<nPS){
+				else if(i>0 && (i+1)<nPS){
+					//cerr << __LINE__ << endl;
 					io(argvMaster[i], pipes[i].fd, pipes[i-1].fd);
 				}
-				if((i+1)>=nPS){
-					io(argvMaster[i], fdNULL, pipes[i-1].fd);
+				else if((i+1)>=nPS){
+					/*cerr << __LINE__ << endl;	
+					cerr << "fdCur[RD]: " << pipes[i].fd[RD] << endl;
+					cerr << "fdCur[WR]: " << pipes[i].fd[WR] << endl;
+					cerr << "fdPrev[RD]: " << pipes[i-1].fd[RD] << endl;
+					cerr << "fdPrev[WR]: " << pipes[i-1].fd[WR] << endl;*/
+					io(argvMaster[i], pipes[i].fd, pipes[i-1].fd); 
 				}
 			}
 				
@@ -565,6 +645,7 @@ void redirExec(vector<char**> argvMaster){
 				}
 			}
 		}
+		//}
 	}
 }
 
@@ -586,8 +667,6 @@ vector<char**> parsePipes(char* cmdB){
 		}
 	}
 
-	//int numPS = cmdPiped.size();
-
 	//printing cmdPiped
 	/*cerr << endl << "cmdPiped: " << endl;
 	for(unsigned int i = 0; i<cmdPiped.size(); i++){
@@ -600,21 +679,21 @@ vector<char**> parsePipes(char* cmdB){
 		argvMaster.push_back(parseSpace(cmdPiped[i].c_str()));
 	}
 
-	//printing cmdExec;
-	for(unsigned int i = 0; i<argvMaster.size(); i++){
-		for(unsigned int j = 0; argvMaster[i][j]!=NULL; j++){
-			cerr << argvMaster[i][j] << endl;
-		}
-	}
-
 	return argvMaster;
 }
 
 int redir(char*cmdB){
 	vector<char**> argvMaster = parsePipes(cmdB);
 	
-	
 	redirExec(argvMaster);
+
+	/*for(unsigned int i = 0; i<argvMaster.size(); i++){
+		for(unsigned int j = 0; argvMaster[i][j]!=NULL; j++){
+			delete[] argvMaster[i][j];
+		}
+		delete argvMaster[i];
+	}
+	argvMaster.clear();*/
 
 	if(-1 == dup2(savestdin, 0)){ //restore stdin
 		perror("dup2");
@@ -628,29 +707,44 @@ int redir(char*cmdB){
 									
 int execCmd(char** argv, int (&fdCur)[2], int (&fdPrev)[2], bool dealloc){ //process spawning
 	if(fdCur!=fdNULL && fdPrev==fdNULL){ //first element
+		//cerr << __LINE__ << endl;	
 		if(-1 == dup2(fdCur[WR], 1)){
 			perror("dup2");
-			cerr << __LINE__ << endl;
+			//cerr << __LINE__ << endl;
 		}
 	}
 	else if(fdCur!=fdNULL && fdPrev!=fdNULL){ //element between first and last
+		/*cerr << __LINE__ << endl;	
+		cerr << "fdCur[RD]: " << fdCur[RD] << endl;
+		cerr << "fdCur[WR]: " << fdCur[WR] << endl;
+		cerr << "fdPrev[RD]: " << fdPrev[RD] << endl;
+		cerr << "fdPrev[WR]: " << fdPrev[WR] << endl;*/
 		if(-1 == dup2(fdCur[WR], 1)){
 			perror("dup2");
-			cerr << __LINE__ << endl;
+			//cerr << __LINE__ << endl;
 		}
 		if(-1 == dup2(fdPrev[RD], 0)){
 			perror("dup2");
-			cerr << __LINE__ << endl;
-		}
-	}
-	else if(fdCur==fdNULL && fdPrev!=fdNULL){ //last element
-		if(-1 == dup2(fdPrev[RD], 0)){
-			perror("dup2");
-			cerr << __LINE__ << endl;
+			//cerr << __LINE__ << endl;
 		}
 		if(-1 == close(fdPrev[WR])){
 			perror("close");
 			cerr << __LINE__ << endl;
+		}
+		/*if(-1 == close(fdCur[RD])){
+			perror("close");
+			cerr << __LINE__ << endl;
+		}*/
+	}
+	else if(fdCur==fdNULL && fdPrev!=fdNULL){ //last element
+		cerr << __LINE__ << endl;
+		if(-1 == dup2(fdPrev[RD], 0)){
+			perror("dup2");
+			//cerr << __LINE__ << endl;
+		}
+		if(-1 == close(fdPrev[WR])){
+			perror("close");
+			//cerr << __LINE__ << endl;
 		}
 	}
 
@@ -912,9 +1006,18 @@ int main(){
 			bool cmdBDone = false;
 			while(!cmdBDone){
 				parseMaster(cmdB);	
-				//int fdCur[2];
-				//pipe(fdCur);
-				//io(parsePipes(cmdB)[0], fdCur, fdNULL);
+				
+				/*
+				int fdCur[2];
+				pipe(fdCur);
+				int fdPrev[2];
+				pipe(fdPrev);
+				dup2(fdPrev[WR], 1);
+				cout << "aAaaAaaaAAAAa";
+				io(parsePipes(cmdB)[0], fdCur, fdPrev);
+				exit(1);
+				*/
+
 				cmdB = strtok(NULL, ";");
 				if(cmdB==NULL){
 					cmdBDone = true;
