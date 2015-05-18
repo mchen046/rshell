@@ -1,0 +1,1148 @@
+Script started on Sun 17 May 2015 09:14:08 PM PDT
+~
+mchen046@hammer $ cs100
+[0;91m
+===============================================================================
+|                                                                             |
+| You have enabled settings specific for cs100.  Everything you do is being   |
+| recorded to measure your progress in the class.                             |
+|                                                                             |
+| Important commands for the class:                                           |
+|   * calcgrade.sh          displays a detailed breakdown of your grade       |
+|   * checksyscalls.sh      is your cpp file doing proper error checking?     |
+|   * typespeed             practice typing unix commands                     |
+|                                                                             |
+| Important commands for general C++ programming:                             |
+|   * make                  don't call g++ manually; let make do the work!    |
+|   * gdb                   the GNU debugger                                  |
+|   * valgrind              get rid of your memory leaks                      |
+|   * cppcheck              static analysis tool                              |
+|   * man                   find help about any syscall / terminal command    |
+|                                                                             |
+===============================================================================
+[0m
+[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~[0;95m [0;36m$[0m cd CS100/rshell
+[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~/CS100/rshell[0;95m (redirect) [0;36m$[0m make
+if [ ! -d bin ]; then mkdir bin; fi
+g++ -std=c++11 -Wall -Werror -pedantic ./src/rshell.cpp -o bin/rshell
+g++ -std=c++11 -Wall -Werror -pedantic ./src/cp.cpp -o bin/cp
+g++ -std=c++11 -Wall -Werror -pedantic ./src/ls.cpp -o bin/ls
+g++ -std=c++11 -Wall -Werror -pedantic ./src/mv.cpp -o bin/mv
+g++ -std=c++11 -Wall -Werror -pedantic ./src/rm.cpp -o bin/rm
+[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~/CS100/rshell[0;95m (redirect) [0;36m$[0m cppcheck src
+Checking src/cp.cpp...
+1/5 files checked 7% done
+Checking src/ls.cpp...
+2/5 files checked 33% done
+Checking src/mv.cpp...
+3/5 files checked 36% done
+Checking src/rm.cpp...
+4/5 files checked 41% done
+Checking src/rshell.cpp...
+[src/rshell.cpp:907]: (error) Buffer is accessed out of bounds.
+5/5 files checked 100% done
+[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~/CS100/rshell[0;95m (redirect) [0;36m$[0m #cppcheck error is a documented bug
+[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~/CS100/rshell[0;95m (redirect) [0;36m$[0m [K[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~/CS100/rshell[0;95m (redirect) [0;36m$[0m [K[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~/CS100/rshell[0;95m (redirect) [0;36m$[0m #cases with no space in between
+[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~/CS100/rshell[0;95m (redirect) [0;36m$[0m bin.[K[Kn/rshell
+mchen046@hammer.cs.ucr.edu$ #cases with no space in between
+mchen046@hammer.cs.ucr.edu$ cat<eif<eif2 eif3                 make eif
+rm eif*; echo one > eif; echo two > eif2; echo three > eif3; echo four > eif4; echo five > eif5; echo six > eif6; echo seven > eif7; echo eight > eif8; echo nine > eif9	
+mchen046@hammer.cs.ucr.edu$ cat<eif<eif2 eif3
+three
+mchen046@hammer.cs.ucr.edu$ make test
+echo 1; cat eif; echo ""; echo 2; cat eif2; echo ""; echo 3; cat eif3; echo ""; echo 4; cat eif4; echo ""; echo 5; cat eif5; echo ""; echo 6; cat eif6; echo ""; echo 7; cat eif7; echo ""; echo 8; cat eif8; echo ""; echo 9; cat eif9; echo "";
+1
+one
+
+2
+two
+
+3
+three
+
+4
+four
+
+5
+five
+
+6
+six
+
+7
+seven
+
+8
+eight
+
+9
+nine
+
+rm eif*; echo one > eif; echo two > eif2; echo three > eif3; echo four > eif4; echo five > eif5; echo six > eif6; echo seven > eif7; echo eight > eif8; echo nine > eif9	
+mchen046@hammer.cs.ucr.edu$ cat>eif eif2> eif3 eif4> eif5
+mchen046@hammer.cs.ucr.edu$ make test
+echo 1; cat eif; echo ""; echo 2; cat eif2; echo ""; echo 3; cat eif3; echo ""; echo 4; cat eif4; echo ""; echo 5; cat eif5; echo ""; echo 6; cat eif6; echo ""; echo 7; cat eif7; echo ""; echo 8; cat eif8; echo ""; echo 9; cat eif9; echo "";
+1
+
+2
+two
+
+3
+
+4
+four
+
+5
+two
+four
+
+6
+six
+
+7
+seven
+
+8
+eight
+
+9
+nine
+
+rm eif*; echo one > eif; echo two > eif2; echo three > eif3; echo four > eif4; echo five > eif5; echo six > eif6; echo seven > eif7; echo eight > eif8; echo nine > eif9	
+mchen046@hammer.cs.ucr.edu$ #invalid cases
+mchen046@hammer.cs.ucr.edu$ cat nonexistentfile > tr a-z A-Z > eif
+cat: nonexistentfile: No such file or directory
+cat: a-z: No such file or directory
+cat: A-Z: No such file or directory
+mchen046@hammer.cs.ucr.edu$ make eif
+rm eif*; echo one > eif; echo two > eif2; echo three > eif3; echo four > eif4; echo five > eif5; echo six > eif6; echo seven > eif7; echo eight > eif8; echo nine > eif9	
+mchen046@hammer.cs.ucr.edu$ make test
+echo 1; cat eif; echo ""; echo 2; cat eif2; echo ""; echo 3; cat eif3; echo ""; echo 4; cat eif4; echo ""; echo 5; cat eif5; echo ""; echo 6; cat eif6; echo ""; echo 7; cat eif7; echo ""; echo 8; cat eif8; echo ""; echo 9; cat eif9; echo "";
+1
+one
+
+2
+two
+
+3
+three
+
+4
+four
+
+5
+five
+
+6
+six
+
+7
+seven
+
+8
+eight
+
+9
+nine
+
+rm eif*; echo one > eif; echo two > eif2; echo three > eif3; echo four > eif4; echo five > eif5; echo six > eif6; echo seven > eif7; echo eight > eif8; echo nine > eif9	
+mchen046@hammer.cs.ucr.edu$ #special cases that hangs on user input
+mchen046@hammer.cs.ucr.edu$ cat > eif
+hello world
+this hangs on user input
+similar to bash
+it requires a ctrl c signal to exit
+^C
+[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~/CS100/rshell[0;95m (redirect) [0;36m$[0m bin[K[K[Kbin/rshell
+mchen046@hammer.cs.ucr.edu$ make test
+echo 1; cat eif; echo ""; echo 2; cat eif2; echo ""; echo 3; cat eif3; echo ""; echo 4; cat eif4; echo ""; echo 5; cat eif5; echo ""; echo 6; cat eif6; echo ""; echo 7; cat eif7; echo ""; echo 8; cat eif8; echo ""; echo 9; cat eif9; echo "";
+1
+hello world
+this hangs on user input
+similar to bash
+it requires a ctrl c signal to exit
+
+2
+two
+
+3
+three
+
+4
+four
+
+5
+five
+
+6
+six
+
+7
+seven
+
+8
+eight
+
+9
+nine
+
+rm eif*; echo one > eif; echo two > eif2; echo three > eif3; echo four > eif4; echo five > eif5; echo six > eif6; echo seven > eif7; echo eight > eif8; echo nine > eif9	
+mchen046@hammer.cs.ucr.edu$ cat >> eif
+hello world
+>> this also hangs on user n input
+similar to bash
+it requires a ctrl c signal to exit
+^C
+[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~/CS100/rshell[0;95m (redirect) [0;36m$[0m bin/rshell
+mchen046@hammer.cs.ucr.edu$ naje t      make test
+echo 1; cat eif; echo ""; echo 2; cat eif2; echo ""; echo 3; cat eif3; echo ""; echo 4; cat eif4; echo ""; echo 5; cat eif5; echo ""; echo 6; cat eif6; echo ""; echo 7; cat eif7; echo ""; echo 8; cat eif8; echo ""; echo 9; cat eif9; echo "";
+1
+one
+hello world
+>> this also hangs on user input
+similar to bash
+it requires a ctrl c signal to exit
+
+2
+two
+
+3
+three
+
+4
+four
+
+5
+five
+
+6
+six
+
+7
+seven
+
+8
+eight
+
+9
+nine
+
+rm eif*; echo one > eif; echo two > eif2; echo three > eif3; echo four > eif4; echo five > eif5; echo six > eif6; echo seven > eif7; echo eight > eif8; echo nine > eif9	
+mchen046@hammer.cs.ucr.edu$ #i/o redirection standalone
+mchen046@hammer.cs.ucr.edu$ cat < eif
+one
+mchen046@hammer.cs.ucr.edu$ make test
+echo 1; cat eif; echo ""; echo 2; cat eif2; echo ""; echo 3; cat eif3; echo ""; echo 4; cat eif4; echo ""; echo 5; cat eif5; echo ""; echo 6; cat eif6; echo ""; echo 7; cat eif7; echo ""; echo 8; cat eif8; echo ""; echo 9; cat eif9; echo "";
+1
+one
+
+2
+two
+
+3
+three
+
+4
+four
+
+5
+five
+
+6
+six
+
+7
+seven
+
+8
+eight
+
+9
+nine
+
+rm eif*; echo one > eif; echo two > eif2; echo three > eif3; echo four > eif4; echo five > eif5; echo six > eif6; echo seven > eif7; echo eight > eif8; echo nine > eif9	
+mchen046@hammer.cs.ucr.edu$ cat < eif > eif2
+mchen046@hammer.cs.ucr.edu$ make test
+echo 1; cat eif; echo ""; echo 2; cat eif2; echo ""; echo 3; cat eif3; echo ""; echo 4; cat eif4; echo ""; echo 5; cat eif5; echo ""; echo 6; cat eif6; echo ""; echo 7; cat eif7; echo ""; echo 8; cat eif8; echo ""; echo 9; cat eif9; echo "";
+1
+one
+
+2
+one
+
+3
+three
+
+4
+four
+
+5
+five
+
+6
+six
+
+7
+seven
+
+8
+eight
+
+9
+nine
+
+rm eif*; echo one > eif; echo two > eif2; echo three > eif3; echo four > eif4; echo five > eif5; echo six > eif6; echo seven > eif7; echo eight > eif8; echo nine > eif9	
+mchen046@hammer.cs.ucr.edu$ cat > eif < eif2
+mchen046@hammer.cs.ucr.edu$ make test
+echo 1; cat eif; echo ""; echo 2; cat eif2; echo ""; echo 3; cat eif3; echo ""; echo 4; cat eif4; echo ""; echo 5; cat eif5; echo ""; echo 6; cat eif6; echo ""; echo 7; cat eif7; echo ""; echo 8; cat eif8; echo ""; echo 9; cat eif9; echo "";
+1
+two
+
+2
+two
+
+3
+three
+
+4
+four
+
+5
+five
+
+6
+six
+
+7
+seven
+
+8
+eight
+
+9
+nine
+
+rm eif*; echo one > eif; echo two > eif2; echo three > eif3; echo four > eif4; echo five > eif5; echo six > eif6; echo seven > eif7; echo eight > eif8; echo nine > eif9	
+mchen046@hammer.cs.ucr.edu$ cat < eif < eif2 eif3 < eif4 eif5 eif6
+three
+five
+six
+mchen046@hammer.cs.ucr.edu$ make test
+echo 1; cat eif; echo ""; echo 2; cat eif2; echo ""; echo 3; cat eif3; echo ""; echo 4; cat eif4; echo ""; echo 5; cat eif5; echo ""; echo 6; cat eif6; echo ""; echo 7; cat eif7; echo ""; echo 8; cat eif8; echo ""; echo 9; cat eif9; echo "";
+1
+one
+
+2
+two
+
+3
+three
+
+4
+four
+
+5
+five
+
+6
+six
+
+7
+seven
+
+8
+eight
+
+9
+nine
+
+rm eif*; echo one > eif; echo two > eif2; echo three > eif3; echo four > eif4; echo five > eif5; echo six > eif6; echo seven > eif7; echo eight > eif8; echo nine > eif9	
+mchen046@hammer.cs.ucr.edu$ #i/o redirection >> append standalone
+mchen046@hammer.cs.ucr.edu$ cat eif >> eif2
+mchen046@hammer.cs.ucr.edu$ make test
+echo 1; cat eif; echo ""; echo 2; cat eif2; echo ""; echo 3; cat eif3; echo ""; echo 4; cat eif4; echo ""; echo 5; cat eif5; echo ""; echo 6; cat eif6; echo ""; echo 7; cat eif7; echo ""; echo 8; cat eif8; echo ""; echo 9; cat eif9; echo "";
+1
+one
+
+2
+two
+one
+
+3
+three
+
+4
+four
+
+5
+five
+
+6
+six
+
+7
+seven
+
+8
+eight
+
+9
+nine
+
+rm eif*; echo one > eif; echo two > eif2; echo three > eif3; echo four > eif4; echo five > eif5; echo six > eif6; echo seven > eif7; echo eight > eif8; echo nine > eif9	
+mchen046@hammer.cs.ucr.edu$ cat >> eif eif2
+mchen046@hammer.cs.ucr.edu$ make test
+echo 1; cat eif; echo ""; echo 2; cat eif2; echo ""; echo 3; cat eif3; echo ""; echo 4; cat eif4; echo ""; echo 5; cat eif5; echo ""; echo 6; cat eif6; echo ""; echo 7; cat eif7; echo ""; echo 8; cat eif8; echo ""; echo 9; cat eif9; echo "";
+1
+one
+two
+
+2
+two
+
+3
+three
+
+4
+four
+
+5
+five
+
+6
+six
+
+7
+seven
+
+8
+eight
+
+9
+nine
+
+rm eif*; echo one > eif; echo two > eif2; echo three > eif3; echo four > eif4; echo five > eif5; echo six > eif6; echo seven > eif7; echo eight > eif8; echo nine > eif9	
+mchen046@hammer.cs.ucr.edu$ cat >> eif >> eif2 eif3 >> eif4 eif5 eif6
+mchen046@hammer.cs.ucr.edu$ makae  e test
+echo 1; cat eif; echo ""; echo 2; cat eif2; echo ""; echo 3; cat eif3; echo ""; echo 4; cat eif4; echo ""; echo 5; cat eif5; echo ""; echo 6; cat eif6; echo ""; echo 7; cat eif7; echo ""; echo 8; cat eif8; echo ""; echo 9; cat eif9; echo "";
+1
+one
+
+2
+two
+
+3
+three
+
+4
+four
+three
+five
+six
+
+5
+five
+
+6
+six
+
+7
+seven
+
+8
+eight
+
+9
+nine
+
+rm eif*; echo one > eif; echo two > eif2; echo three > eif3; echo four > eif4; echo five > eif5; echo six > eif6; echo seven > eif7; echo eight > eif8; echo nine > eif9	
+mchen046@hammer.cs.ucr.edu$ #i/o redirection WITHOUT >> append cases
+mchen046@hammer.cs.ucr.edu$ cat eif > eif2
+mchen046@hammer.cs.ucr.edu$ make test
+echo 1; cat eif; echo ""; echo 2; cat eif2; echo ""; echo 3; cat eif3; echo ""; echo 4; cat eif4; echo ""; echo 5; cat eif5; echo ""; echo 6; cat eif6; echo ""; echo 7; cat eif7; echo ""; echo 8; cat eif8; echo ""; echo 9; cat eif9; echo "";
+1
+one
+
+2
+one
+
+3
+three
+
+4
+four
+
+5
+five
+
+6
+six
+
+7
+seven
+
+8
+eight
+
+9
+nine
+
+rm eif*; echo one > eif; echo two > eif2; echo three > eif3; echo four > eif4; echo five > eif5; echo six > eif6; echo seven > eif7; echo eight > eif8; echo nine > eif9	
+mchen046@hammer.cs.ucr.edu$ cat eif < eif2
+one
+mchen046@hammer.cs.ucr.edu$ make test
+echo 1; cat eif; echo ""; echo 2; cat eif2; echo ""; echo 3; cat eif3; echo ""; echo 4; cat eif4; echo ""; echo 5; cat eif5; echo ""; echo 6; cat eif6; echo ""; echo 7; cat eif7; echo ""; echo 8; cat eif8; echo ""; echo 9; cat eif9; echo "";
+1
+one
+
+2
+two
+
+3
+three
+
+4
+four
+
+5
+five
+
+6
+six
+
+7
+seven
+
+8
+eight
+
+9
+nine
+
+rm eif*; echo one > eif; echo two > eif2; echo three > eif3; echo four > eif4; echo five > eif5; echo six > eif6; echo seven > eif7; echo eight > eif8; echo nine > eif9	
+mchen046@hammer.cs.ucr.edu$ cat > eif < eif2 eif3 < eif4
+mchen046@hammer.cs.ucr.edu$ make test
+echo 1; cat eif; echo ""; echo 2; cat eif2; echo ""; echo 3; cat eif3; echo ""; echo 4; cat eif4; echo ""; echo 5; cat eif5; echo ""; echo 6; cat eif6; echo ""; echo 7; cat eif7; echo ""; echo 8; cat eif8; echo ""; echo 9; cat eif9; echo "";
+1
+three
+
+2
+two
+
+3
+three
+
+4
+four
+
+5
+five
+
+6
+six
+
+7
+seven
+
+8
+eight
+
+9
+nine
+
+rm eif*; echo one > eif; echo two > eif2; echo three > eif3; echo four > eif4; echo five > eif5; echo six > eif6; echo seven > eif7; echo eight > eif8; echo nine > eif9	
+mchen046@hammer.cs.ucr.edu$ cat > eif < eif2 < eif3 < eif4
+mchen046@hammer.cs.ucr.edu$ make test
+echo 1; cat eif; echo ""; echo 2; cat eif2; echo ""; echo 3; cat eif3; echo ""; echo 4; cat eif4; echo ""; echo 5; cat eif5; echo ""; echo 6; cat eif6; echo ""; echo 7; cat eif7; echo ""; echo 8; cat eif8; echo ""; echo 9; cat eif9; echo "";
+1
+four
+
+2
+two
+
+3
+three
+
+4
+four
+
+5
+five
+
+6
+six
+
+7
+seven
+
+8
+eight
+
+9
+nine
+
+rm eif*; echo one > eif; echo two > eif2; echo three > eif3; echo four > eif4; echo five > eif5; echo six > eif6; echo seven > eif7; echo eight > eif8; echo nine > eif9	
+mchen046@hammer.cs.ucr.edu$ cat < eif > eif2 < eif3 > eif4
+mchen046@hammer.cs.ucr.edu$ make test
+echo 1; cat eif; echo ""; echo 2; cat eif2; echo ""; echo 3; cat eif3; echo ""; echo 4; cat eif4; echo ""; echo 5; cat eif5; echo ""; echo 6; cat eif6; echo ""; echo 7; cat eif7; echo ""; echo 8; cat eif8; echo ""; echo 9; cat eif9; echo "";
+1
+one
+
+2
+
+3
+three
+
+4
+three
+
+5
+five
+
+6
+six
+
+7
+seven
+
+8
+eight
+
+9
+nine
+
+rm eif*; echo one > eif; echo two > eif2; echo three > eif3; echo four > eif4; echo five > eif5; echo six > eif6; echo seven > eif7; echo eight > eif8; echo nine > eif9	
+mchen046@hammer.cs.ucr.edu$ cat > eif > eif2 eif3 eif4 < eif5
+mchen046@hammer.cs.ucr.edu$ make test
+echo 1; cat eif; echo ""; echo 2; cat eif2; echo ""; echo 3; cat eif3; echo ""; echo 4; cat eif4; echo ""; echo 5; cat eif5; echo ""; echo 6; cat eif6; echo ""; echo 7; cat eif7; echo ""; echo 8; cat eif8; echo ""; echo 9; cat eif9; echo "";
+1
+
+2
+three
+four
+
+3
+three
+
+4
+four
+
+5
+five
+
+6
+six
+
+7
+seven
+
+8
+eight
+
+9
+nine
+
+rm eif*; echo one > eif; echo two > eif2; echo three > eif3; echo four > eif4; echo five > eif5; echo six > eif6; echo seven > eif7; echo eight > eif8; echo nine > eif9	
+mchen046@hammer.cs.ucr.edu$ cat > eif < eif2 eif3 > eif4 > eif5 eif6
+mchen046@hammer.cs.ucr.edu$ make test
+echo 1; cat eif; echo ""; echo 2; cat eif2; echo ""; echo 3; cat eif3; echo ""; echo 4; cat eif4; echo ""; echo 5; cat eif5; echo ""; echo 6; cat eif6; echo ""; echo 7; cat eif7; echo ""; echo 8; cat eif8; echo ""; echo 9; cat eif9; echo "";
+1
+
+2
+two
+
+3
+three
+
+4
+
+5
+three
+six
+
+6
+six
+
+7
+seven
+
+8
+eight
+
+9
+nine
+
+rm eif*; echo one > eif; echo two > eif2; echo three > eif3; echo four > eif4; echo five > eif5; echo six > eif6; echo seven > eif7; echo eight > eif8; echo nine > eif9	
+mchen046@hammer.cs.ucr.edu$ cat > eif eif2 eif3 < eif4 > eif5 eif6 eif7
+mchen046@hammer.cs.ucr.edu$ make test
+echo 1; cat eif; echo ""; echo 2; cat eif2; echo ""; echo 3; cat eif3; echo ""; echo 4; cat eif4; echo ""; echo 5; cat eif5; echo ""; echo 6; cat eif6; echo ""; echo 7; cat eif7; echo ""; echo 8; cat eif8; echo ""; echo 9; cat eif9; echo "";
+1
+
+2
+two
+
+3
+three
+
+4
+four
+
+5
+two
+three
+six
+seven
+
+6
+six
+
+7
+seven
+
+8
+eight
+
+9
+nine
+
+rm eif*; echo one > eif; echo two > eif2; echo three > eif3; echo four > eif4; echo five > eif5; echo six > eif6; echo seven > eif7; echo eight > eif8; echo nine > eif9	
+mchen046@hammer.cs.ucr.edu$ cat < eif > eif2 > eif3 eif4 > eif5 < eif6 eif7
+mchen046@hammer.cs.ucr.edu$ make test
+echo 1; cat eif; echo ""; echo 2; cat eif2; echo ""; echo 3; cat eif3; echo ""; echo 4; cat eif4; echo ""; echo 5; cat eif5; echo ""; echo 6; cat eif6; echo ""; echo 7; cat eif7; echo ""; echo 8; cat eif8; echo ""; echo 9; cat eif9; echo "";
+1
+one
+
+2
+
+3
+
+4
+four
+
+5
+four
+seven
+
+6
+six
+
+7
+seven
+
+8
+eight
+
+9
+nine
+
+rm eif*; echo one > eif; echo two > eif2; echo three > eif3; echo four > eif4; echo five > eif5; echo six > eif6; echo seven > eif7; echo eight > eif8; echo nine > eif9	
+mchen046@hammer.cs.ucr.edu$ cat > eif eif2 eif3 < eif4 > eif5 eif6 eif7 < eif8 eif9
+mchen046@hammer.cs.ucr.edu$ make test
+echo 1; cat eif; echo ""; echo 2; cat eif2; echo ""; echo 3; cat eif3; echo ""; echo 4; cat eif4; echo ""; echo 5; cat eif5; echo ""; echo 6; cat eif6; echo ""; echo 7; cat eif7; echo ""; echo 8; cat eif8; echo ""; echo 9; cat eif9; echo "";
+1
+
+2
+two
+
+3
+three
+
+4
+four
+
+5
+two
+three
+six
+seven
+nine
+
+6
+six
+
+7
+seven
+
+8
+eight
+
+9
+nine
+
+rm eif*; echo one > eif; echo two > eif2; echo three > eif3; echo four > eif4; echo five > eif5; echo six > eif6; echo seven > eif7; echo eight > eif8; echo nine > eif9	
+mchen046@hammer.cs.ucr.edu$ cat < eif > eif2 < eif3 >> eif4
+mchen046@hammer.cs.ucr.edu$ make    #i/o redirection WITH >> append cases
+mchen046@hammer.cs.ucr.edu$ make test
+echo 1; cat eif; echo ""; echo 2; cat eif2; echo ""; echo 3; cat eif3; echo ""; echo 4; cat eif4; echo ""; echo 5; cat eif5; echo ""; echo 6; cat eif6; echo ""; echo 7; cat eif7; echo ""; echo 8; cat eif8; echo ""; echo 9; cat eif9; echo "";
+1
+one
+
+2
+
+3
+three
+
+4
+four
+three
+
+5
+five
+
+6
+six
+
+7
+seven
+
+8
+eight
+
+9
+nine
+
+rm eif*; echo one > eif; echo two > eif2; echo three > eif3; echo four > eif4; echo five > eif5; echo six > eif6; echo seven > eif7; echo eight > eif8; echo nine > eif9	
+mchen046@hammer.cs.ucr.edu$ cat > eif < eif2 eif3 > eif4 >> eif5 eif6
+mchen046@hammer.cs.ucr.edu$ make test
+echo 1; cat eif; echo ""; echo 2; cat eif2; echo ""; echo 3; cat eif3; echo ""; echo 4; cat eif4; echo ""; echo 5; cat eif5; echo ""; echo 6; cat eif6; echo ""; echo 7; cat eif7; echo ""; echo 8; cat eif8; echo ""; echo 9; cat eif9; echo "";
+1
+
+2
+two
+
+3
+three
+
+4
+
+5
+five
+three
+six
+
+6
+six
+
+7
+seven
+
+8
+eight
+
+9
+nine
+
+rm eif*; echo one > eif; echo two > eif2; echo three > eif3; echo four > eif4; echo five > eif5; echo six > eif6; echo seven > eif7; echo eight > eif8; echo nine > eif9	
+mchen046@hammer.cs.ucr.edu$ cat > eif eif2 eif3 < eif4 >> eif5 eif6 eif7
+mchen046@hammer.cs.ucr.edu$ make test
+echo 1; cat eif; echo ""; echo 2; cat eif2; echo ""; echo 3; cat eif3; echo ""; echo 4; cat eif4; echo ""; echo 5; cat eif5; echo ""; echo 6; cat eif6; echo ""; echo 7; cat eif7; echo ""; echo 8; cat eif8; echo ""; echo 9; cat eif9; echo "";
+1
+
+2
+two
+
+3
+three
+
+4
+four
+
+5
+five
+two
+three
+six
+seven
+
+6
+six
+
+7
+seven
+
+8
+eight
+
+9
+nine
+
+rm eif*; echo one > eif; echo two > eif2; echo three > eif3; echo four > eif4; echo five > eif5; echo six > eif6; echo seven > eif7; echo eight > eif8; echo nine > eif9	
+mchen046@hammer.cs.ucr.edu$ #basic piping
+mchen046@hammer.cs.ucr.edu$ ls -l | grep eif
+-rw------- 1 mchen046 csmajs    4 May 17 21:16 eif
+-rw------- 1 mchen046 csmajs    4 May 17 21:16 eif2
+-rw------- 1 mchen046 csmajs    6 May 17 21:16 eif3
+-rw------- 1 mchen046 csmajs    5 May 17 21:16 eif4
+-rw------- 1 mchen046 csmajs    5 May 17 21:16 eif5
+-rw------- 1 mchen046 csmajs    4 May 17 21:16 eif6
+-rw------- 1 mchen046 csmajs    6 May 17 21:16 eif7
+-rw------- 1 mchen046 csmajs    6 May 17 21:16 eif8
+-rw------- 1 mchen046 csmajs    5 May 17 21:16 eif9
+mchen046@hammer.cs.ucr.edu$ cat test | head
+hello
+world
+this
+is
+a
+file
+with
+15
+lines
+bang
+mchen046@hammer.cs.ucr.edu$ cat test | tail
+file
+with
+15
+lines
+bang
+ELEVENTH LINE
+TWELFTH LINE
+THIRTEENTH LINE
+FOURTEENTH LINE
+FIFTEENTH LINE
+mchen046@hammer.cs.ucr.edu$ cat test | sort
+15
+a
+bang
+ELEVENTH LINE
+FIFTEENTH LINE
+file
+FOURTEENTH LINE
+hello
+is
+lines
+THIRTEENTH LINE
+this
+TWELFTH LINE
+with
+world
+mchen046@hammer.cs.ucr.edu$ ls -l | uniq
+total 40
+drwx------ 2 mchen046 csmajs 4096 May 17 21:07 bin
+-rw------- 1 mchen046 csmajs    4 May 17 21:16 eif
+-rw------- 1 mchen046 csmajs    4 May 17 21:16 eif2
+-rw------- 1 mchen046 csmajs    6 May 17 21:16 eif3
+-rw------- 1 mchen046 csmajs    5 May 17 21:16 eif4
+-rw------- 1 mchen046 csmajs    5 May 17 21:16 eif5
+-rw------- 1 mchen046 csmajs    4 May 17 21:16 eif6
+-rw------- 1 mchen046 csmajs    6 May 17 21:16 eif7
+-rw------- 1 mchen046 csmajs    6 May 17 21:16 eif8
+-rw------- 1 mchen046 csmajs    5 May 17 21:16 eif9
+-rw------- 1 mchen046 csmajs 1080 Apr 11 17:34 LICENSE
+-rw------- 1 mchen046 csmajs 1604 May 17 20:44 Makefile
+-rw------- 1 mchen046 csmajs 4954 May  1 23:58 README.md
+drwx------ 2 mchen046 csmajs 4096 May 17 21:06 src
+-rw------- 1 mchen046 csmajs  120 May 17 16:25 test
+-rw------- 1 mchen046 csmajs   99 May 17 16:28 test2
+drwx------ 6 mchen046 csmajs 4096 May  1 23:58 testdir
+drwx------ 2 mchen046 csmajs 4096 May 17 21:07 tests
+-rw------- 1 mchen046 csmajs    0 May 17 21:10 tr
+mchen046@hammer.cs.ucr.edu$ ls -l | fmt
+total 40 drwx------ 2 mchen046 csmajs 4096 May 17 21:07 bin -rw-------
+1 mchen046 csmajs    4 May 17 21:16 eif -rw------- 1 mchen046 csmajs
+4 May 17 21:16 eif2 -rw------- 1 mchen046 csmajs    6 May 17 21:16 eif3
+-rw------- 1 mchen046 csmajs    5 May 17 21:16 eif4 -rw------- 1 mchen046
+csmajs    5 May 17 21:16 eif5 -rw------- 1 mchen046 csmajs    4 May 17
+21:16 eif6 -rw------- 1 mchen046 csmajs    6 May 17 21:16 eif7 -rw-------
+1 mchen046 csmajs    6 May 17 21:16 eif8 -rw------- 1 mchen046 csmajs    5
+May 17 21:16 eif9 -rw------- 1 mchen046 csmajs 1080 Apr 11 17:34 LICENSE
+-rw------- 1 mchen046 csmajs 1604 May 17 20:44 Makefile -rw------- 1
+mchen046 csmajs 4954 May  1 23:58 README.md drwx------ 2 mchen046 csmajs
+4096 May 17 21:06 src -rw------- 1 mchen046 csmajs  120 May 17 16:25
+test -rw------- 1 mchen046 csmajs   99 May 17 16:28 test2 drwx------
+6 mchen046 csmajs 4096 May  1 23:58 testdir drwx------ 2 mchen046 csmajs
+4096 May 17 21:07 tests -rw------- 1 mchen046 csmajs    0 May 17 21:10 tr
+mchen046@hammer.cs.ucr.edu$ ls -l | pr
+
+
+2015-05-17 21:23                                                  Page 1
+
+
+total 40
+drwx------ 2 mchen046 csmajs 4096 May 17 21:07 bin
+-rw------- 1 mchen046 csmajs    4 May 17 21:16 eif
+-rw------- 1 mchen046 csmajs    4 May 17 21:16 eif2
+-rw------- 1 mchen046 csmajs    6 May 17 21:16 eif3
+-rw------- 1 mchen046 csmajs    5 May 17 21:16 eif4
+-rw------- 1 mchen046 csmajs    5 May 17 21:16 eif5
+-rw------- 1 mchen046 csmajs    4 May 17 21:16 eif6
+-rw------- 1 mchen046 csmajs    6 May 17 21:16 eif7
+-rw------- 1 mchen046 csmajs    6 May 17 21:16 eif8
+-rw------- 1 mchen046 csmajs    5 May 17 21:16 eif9
+-rw------- 1 mchen046 csmajs 1080 Apr 11 17:34 LICENSE
+-rw------- 1 mchen046 csmajs 1604 May 17 20:44 Makefile
+-rw------- 1 mchen046 csmajs 4954 May  1 23:58 README.md
+drwx------ 2 mchen046 csmajs 4096 May 17 21:06 src
+-rw------- 1 mchen046 csmajs  120 May 17 16:25 test
+-rw------- 1 mchen046 csmajs   99 May 17 16:28 test2
+drwx------ 6 mchen046 csmajs 4096 May  1 23:58 testdir
+drwx------ 2 mchen046 csmajs 4096 May 17 21:07 tests
+-rw------- 1 mchen046 csmajs    0 May 17 21:10 tr
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+mchen046@hammer.cs.ucr.edu$ #piping chaining
+mchen046@hammer.cs.ucr.edu$ ls -l | grep eif | grep 17 | grep 9
+-rw------- 1 mchen046 csmajs    5 May 17 21:16 eif9
+mchen046@hammer.cs.ucr.edu$ cat < test2 | tr A-Z a-z | tee nof | tr a-z A-Z > nof2
+fork() error: Resource temporarily unavailable
+^C
+[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~/CS100/rshell[0;95m (redirect) [0;36m$[0m ls
+bin  eif2  eif4  eif6  eif8  LICENSE   nof   README.md	test   testdir	tr
+eif  eif3  eif5  eif7  eif9  Makefile  nof2  src	test2  tests
+[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~/CS100/rshell[0;95m (redirect) [0;36m$[0m rm nof nof2 tr
+[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~/CS100/rshell[0;95m (redirect) [0;36m$[0m ls
+bin  eif2  eif4  eif6  eif8  LICENSE   README.md  test	 testdir
+eif  eif3  eif5  eif7  eif9  Makefile  src	  test2  tests
+[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~/CS100/rshell[0;95m (redirect) [0;36m$[0m in[K[Kbin/rshell
+mchen046@hammer.cs.ucr.edu$ cat < test2 | tr A-Z a-z | tee nof | tr a-z A-Z > nof2
+mchen046@hammer.cs.ucr.edu$ cat test2
+heLLO wOrLd
+TheSe LeTters arE all dIfferent caSes
+thaT dO nOt FoLlOw PropEr EnglisH cApitAlizAtion
+mchen046@hammer.cs.ucr.edu$ cat nof
+hello world
+these letters are all different cases
+that do not follow proper english capitalization
+mchen046@hammer.cs.ucr.edu$ cat nof2
+HELLO WORLD
+THESE LETTERS ARE ALL DIFFERENT CASES
+THAT DO NOT FOLLOW PROPER ENGLISH CAPITALIZATION
+mchen046@hammer.cs.ucr.edu$ ls -l | grep eif | cat < eif > eif2                                   ls -l | grep eif | cat < eif > eif2
+mchen046@hammer.cs.ucr.edu$ make test
+Message from syslogd@hammer at May 17 21:24:49 ...
+ kernel:[Hardware Error]: MC4 Error (node 3): DRAM ECC error detected on the NB.
+
+Message from syslogd@hammer at May 17 21:24:49 ...
+ kernel:[Hardware Error]: MC4 Error (node 3): DRAM ECC error detected on the NB.
+
+Message from syslogd@hammer at May 17 21:24:49 ...
+ kernel:[Hardware Error]: Error Status: Corrected error, no action required.
+
+Message from syslogd@hammer at May 17 21:24:49 ...
+ kernel:[Hardware Error]: Error Status: Corrected error, no action required.
+
+Message from syslogd@hammer at May 17 21:24:49 ...
+ kernel:[Hardware Error]: CPU:18 (10:9:1) MC4_STATUS[Over|CE|MiscV|-|AddrV|CECC]: 0xdc5c410004080a13
+
+Message from syslogd@hammer at May 17 21:24:49 ...
+ kernel:[Hardware Error]: CPU:18 (10:9:1) MC4_STATUS[Over|CE|MiscV|-|AddrV|CECC]: 0xdc5c410004080a13
+
+Message from syslogd@hammer at May 17 21:24:49 ...
+ kernel:[Hardware Error]: MC4_ADDR: 0x0000001891a88210
+
+Message from syslogd@hammer at May 17 21:24:49 ...
+ kernel:[Hardware Error]: MC4_ADDR: 0x0000001891a88210
+
+Message from syslogd@hammer at May 17 21:24:49 ...
+ kernel:[Hardware Error]: cache level: L3/GEN, mem/io: MEM, mem-tx: RD, part-proc: RES (no timeout)
+
+Message from syslogd@hammer at May 17 21:24:49 ...
+ kernel:[Hardware Error]: cache level: L3/GEN, mem/io: MEM, mem-tx: RD, part-proc: RES (no timeout)
+
+echo 1; cat eif; echo ""; echo 2; cat eif2; echo ""; echo 3; cat eif3; echo ""; echo 4; cat eif4; echo ""; echo 5; cat eif5; echo ""; echo 6; cat eif6; echo ""; echo 7; cat eif7; echo ""; echo 8; cat eif8; echo ""; echo 9; cat eif9; echo "";
+1
+one
+
+2
+one
+
+3
+three
+
+4
+four
+
+5
+five
+
+6
+six
+
+7
+seven
+
+8
+eight
+
+9
+nine
+
+rm eif*; echo one > eif; echo two > eif2; echo three > eif3; echo four > eif4; echo five > eif5; echo six > eif6; echo seven > eif7; echo eight > eif8; echo nine > eif9	
+mchen046@hammer.cs.ucr.edu$ ls -l | cat < eif > eif2
+mchen046@hammer.cs.ucr.edu$ mak  e test
+echo 1; cat eif; echo ""; echo 2; cat eif2; echo ""; echo 3; cat eif3; echo ""; echo 4; cat eif4; echo ""; echo 5; cat eif5; echo ""; echo 6; cat eif6; echo ""; echo 7; cat eif7; echo ""; echo 8; cat eif8; echo ""; echo 9; cat eif9; echo "";
+1
+one
+
+2
+one
+
+3
+three
+
+4
+four
+
+5
+five
+
+6
+six
+
+7
+seven
+
+8
+eight
+
+9
+nine
+
+rm eif*; echo one > eif; echo two > eif2; echo three > eif3; echo four > eif4; echo five > eif5; echo six > eif6; echo seven > eif7; echo eight > eif8; echo nine > eif9	
+mchen046@hammer.cs.ucr.edu$ exit
+[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~/CS100/rshell[0;95m (redirect) [0;36m$[0m exit
+exit
+~
+mchen046@hammer $ exit
+exit
+
+Script done on Sun 17 May 2015 09:25:24 PM PDT
