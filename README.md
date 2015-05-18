@@ -141,7 +141,7 @@ The implemented subpart of the GNU ls command is not able to execute on an exist
 
 Standalone commands similar to cat > eif that wait on user input results in an input stream that can only be terminated by the ctrl c signal. Since proper signal capturing has not yet been implemented, the only way for the user to exit the input stream is by inputting ctrl c. However, this also ends the rshell program.
 
-**2. invalid commands after a valid command in a multiple pipes**
+**2. invalid commands after a valid command in a command with multiple pipes**
 
 For example, the command `ls -l cat < eif > eif2 | invalidcommand` will not output a proper error message for `invalidcommand` if it follows a valid command.
 
