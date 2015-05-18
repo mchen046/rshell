@@ -131,6 +131,35 @@ The implemented subpart of the GNU ls command only prints in the `month date tim
 
 **7. executing ls on an existing file**
 
-When ls is called on an existing file, GNU ls prints out the file's path.
+When ls is called on an existing file, GNU ls prints out the file''s path.
 
 The implemented subpart of the GNU ls command is not able to execute on an existing file.
+
+### Bugs/Limitations/Issues for i/o redirection and piping
+
+**1. `cat > eif`**
+
+Standalone commands similar to cat > eif that wait on user input results in a input stream that can only be terminated by the ctrl c signal. Since proper signal capturing has not been implemented, the only way for the user to exit the input stream is by inputting ctrl c. THowever, this also ends the rshell program.
+
+**2. invalid commands after a valid command in a multiple pipes**
+
+For example, the command `ls -l cat < eif > eif2 | invalidcommand` will not output a proper error message for `invalidcommand` if it follows a valid command.
+
+**3. memory leaks are present**
+
+Due to multiple calls to new and memory allocation on the heap, rshell has not been properly sealed of memory leaks.
+
+**4. bug with cppcheck**
+
+Although not a bug with the rshell program itself, cppcheck prints an error messages on the call to `strcpy`, saying that the `Buffer is accessed out of bounds.` This is a known bug with cppcheck.
+
+**5. improper pipe chaining with i/o redirection**
+Commands similar to
+
+`ls -l | grep eif | cat < eif > eif2 | cat < eif3 < eif4 eif5 < eif6`
+
+are supposed to redirect the output of cat eif into eif2 as well as executing cat eif5. However, rshell does not take into many similar accounts of pipe segments, specifically ones that contain i/o redirection and are chained side by side.
+
+
+
+
