@@ -18,11 +18,21 @@ https://www.github.com/mchen046/rshell/blob/master/src/rshell.cpp
 #include <boost/tokenizer.hpp>
 #include <boost/token_iterator.hpp>
 #include <fcntl.h>
+#include <fstream>
+#include <signal.h>
+
+#define RESET "\033[0m" //reset
+#define BOLDBLACK "\033[1m\033[30m"
+#define BOLDGREEN "\033[1m\033[32m"
+#define BOLDBLUE "\033[1m\033[34m"
+#define GREEN "\033[32m"
+#define BLUE "\033[34m"
+#define CYAN "\033[36m"
 
 using namespace std;
 using namespace boost;
 
-bool exitSeen = false;
+bool exitSeen = false, ackInt = false;
 const int RD = 0;
 const int WR = 1;
 int fdNULL[2];
@@ -346,7 +356,8 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 
 					//deallocate any memory here
 					
-					while(1){	
+					while(!ackInt){	
+						cin.clear();
 						getline(cin, userInput);
 						userInput += '\n';
 						//write to the file here
@@ -359,39 +370,6 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 					}
 					//mimicking a ctrl c exit similar to bash's behavior
 				}
-				/*else if(files.size()==1 && numL==0 && numG==cntG && cnt==0 && cntL==0){ //cmd > nof
-					if(fdCur!=fdNULL && fdPrev==fdNULL){ //no previous input but has destFile
-						string userInput;
-						if(-1 == dup2(savestdin, 0)){ //restore stdin
-							perror("dup2");
-						}
-						while(1){
-							getline(cin, userInput);
-							char* token = new char[strlen(const_cast<char*>(userInput.c_str()))];
-							strcpy(token, userInput.c_str());
-							argvExec[argvChild.size()]=token;	
-							if(execCmd(argvExec, fdCur, fdPrev, false)){
-								return -1;
-							}
-							//write to the file
-							if(-1 == (fdGL = open(destFile, O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR))){
-								perror("open");
-							}
-							//source file
-							int size = 0;
-							char c[BUFSIZ];
-							if(-1 == (size = read(fdCur[RD], &c, sizeof(c)))){
-								perror("read");
-								exit(1);
-							}
-							if(-1 == write(fdGL, &c, size)){
-								perror("write");
-								exit(1);
-							}
-						}
-					}
-				}*/
-				
 									
 				else if(argvExec[1]!=NULL && files.size()==1 && cnt==0){
 					cnt++;
@@ -399,11 +377,6 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 						return -1;
 					}
 				}
-				/*else if(files.size()==1 && cnt==0 && strcmp(argv[argc-2], "<")!=0 && strcmp(argv[argc-2], ">")!=0 && strcmp(argv[argc-2], ">>")!=0){
-					if(-1 == execCmd(argvExec, fdCur, fdPrev, false)){
-						return -1;
-					}
-				}*/
 				
 				for(unsigned int j = 1; j < files.size(); j++){ //write to fdChild pipe
 					if(strcmp(files[j].c_str(), destFile)!=0){
@@ -498,12 +471,8 @@ void redirExec(vector<char**> argvMaster){
 		pipes.push_back(fdObj);
 	}
 		
-	//cout << "number of pipes: " << pipes.size() << endl;
 	bool noRD = false;
 	if(argvMaster.size()==1){
-		/*if(-1 == dup2(pipes[0].fd[WR], 1)){
-			perror("dup2");
-		}*/
 		unsigned int a;
 		bool cond;
 		if(NULL == findDestFile(argvMaster[0], a, cond)){
@@ -521,11 +490,6 @@ void redirExec(vector<char**> argvMaster){
 			pipes[i-1].fd[RD] = fdNULL[RD];
 			pipes[i-1].fd[WR] = fdNULL[WR];
 		}
-		/*else{
-			leave = false;
-		}*/
-
-		//if(!leave){
 
 		int status = 0;
 		int pid = fork();
@@ -543,14 +507,6 @@ void redirExec(vector<char**> argvMaster){
 					redir = true;
 				}
 			}
-
-			/*cerr << __LINE__ << endl; cerr << "i: " << i << endl;
-			cerr << "fdCur[RD]: " << pipes[i].fd[RD] << endl;
-			cerr << "fdCur[WR]: " << pipes[i].fd[WR] << endl;
-			if(i>0){
-				cerr << "fdPrev[RD]: " << pipes[i-1].fd[RD] << endl;
-				cerr << "fdPrev[WR]: " << pipes[i-1].fd[WR] << endl;
-			}*/
 
 			if(i==0 && argvMaster.size()>1){
 				//cerr << __LINE__ << endl;
@@ -610,11 +566,6 @@ void redirExec(vector<char**> argvMaster){
 					io(argvMaster[i], pipes[i].fd, pipes[i-1].fd);
 				}
 				else if((i+1)>=nPS){
-					/*cerr << __LINE__ << endl;	
-					cerr << "fdCur[RD]: " << pipes[i].fd[RD] << endl;
-					cerr << "fdCur[WR]: " << pipes[i].fd[WR] << endl;
-					cerr << "fdPrev[RD]: " << pipes[i-1].fd[RD] << endl;
-					cerr << "fdPrev[WR]: " << pipes[i-1].fd[WR] << endl;*/
 					io(argvMaster[i], pipes[i].fd, pipes[i-1].fd); 
 				}
 			}
@@ -704,7 +655,111 @@ int redir(char*cmdB){
 
 	return 1;
 }
-									
+
+string findPWD(){
+	int fd[2];
+	if(-1 == pipe(fd)){
+		perror("fd");
+	}
+	string pwd = "pwd";
+	char** argv = new char*[2];
+	argv[0] = const_cast<char*>(pwd.c_str());
+	argv[1] = NULL;
+	if(-1 == execCmd(argv, fd, fdNULL, false)){
+		cerr << "findPWD failed!" << endl;
+	}
+
+	//create and read from random file using basic i/o
+	int fdfile;
+	char file[7] = {'X', 'X', 'X', 'X', 'X', 'X', 0};
+	if(-1 == (fdfile = mkstemp(file))){
+		perror("mkstemp");
+	}
+	int size = 0;
+	char c[BUFSIZ];
+	if(-1 == (size = read(fd[RD], &c, sizeof(c)))){
+		perror("read");
+	}
+	if(-1 == write(fdfile, &c, size)){
+		perror("write");
+	}
+
+	ifstream inFile(file);
+	if(!inFile){
+		cerr << file << " could not be opened!" << endl;
+		exit(1);
+	}
+
+	string workDir;
+	inFile >> workDir;
+
+	//deallocate argv
+	delete[] argv;
+
+	//remove unique file
+	char** argv2 = new char*[3];	
+	string rm = "rm";
+	argv2[0] = const_cast<char*>(rm.c_str()); 
+	argv2[1] = file;
+	argv2[2] = NULL;
+	if(-1 == execCmd(argv2, fdNULL, fdNULL, false)){
+		cerr << file << " could not be removed!" << endl;
+		exit(1);
+	}
+	
+	//deallocate argv
+	delete[] argv2;
+
+	if(-1 == dup2(savestdout, 1)){ //restore stdout
+		perror("dup2");
+	}
+
+	return workDir;
+}
+void execCD(char** argv){
+	string pwd = findPWD();
+
+	char* home = getenv("HOME");
+	bool alt = false;
+	bool failed = false;
+	
+	if(argv[1]==NULL){
+		alt = true;	
+	}
+
+	if(!alt && strcmp(argv[1], "-")==0 && -1 == chdir(getenv("OLDPWD"))){
+		perror("chdir");
+		failed = true;
+	}
+
+	if(!alt && strcmp(argv[1], "-")!=0 && -1 == chdir(argv[1])){
+		perror("chdir");
+		failed = true;
+	}
+
+	if(alt && -1 == chdir(home)){
+		perror("chdir");
+		failed = true;
+	}
+
+	//set OLDPWD
+	if(!failed && -1 == setenv("OLDPWD", const_cast<char*>(pwd.c_str()), 1)){
+		perror("setenv");
+	}
+
+	//print OLDPWD
+	//cerr << "OLDPWD: " << getenv("OLDPWD") << endl;
+
+	if(!failed && -1 == setenv("PWD", const_cast<char*>(findPWD().c_str()), 1)){
+		perror("setenv");
+	}
+	
+	//print PWD
+	//cerr << "PWD: " << getenv("PWD") << endl;
+}
+
+
+	
 int execCmd(char** argv, int (&fdCur)[2], int (&fdPrev)[2], bool dealloc){ //process spawning
 	if(fdCur!=fdNULL && fdPrev==fdNULL){ //first element
 		//cerr << __LINE__ << endl;	
@@ -714,11 +769,6 @@ int execCmd(char** argv, int (&fdCur)[2], int (&fdPrev)[2], bool dealloc){ //pro
 		}
 	}
 	else if(fdCur!=fdNULL && fdPrev!=fdNULL){ //element between first and last
-		/*cerr << __LINE__ << endl;	
-		cerr << "fdCur[RD]: " << fdCur[RD] << endl;
-		cerr << "fdCur[WR]: " << fdCur[WR] << endl;
-		cerr << "fdPrev[RD]: " << fdPrev[RD] << endl;
-		cerr << "fdPrev[WR]: " << fdPrev[WR] << endl;*/
 		if(-1 == dup2(fdCur[WR], 1)){
 			perror("dup2");
 			//cerr << __LINE__ << endl;
@@ -731,10 +781,6 @@ int execCmd(char** argv, int (&fdCur)[2], int (&fdPrev)[2], bool dealloc){ //pro
 			perror("close");
 			cerr << __LINE__ << endl;
 		}
-		/*if(-1 == close(fdCur[RD])){
-			perror("close");
-			cerr << __LINE__ << endl;
-		}*/
 	}
 	else if(fdCur==fdNULL && fdPrev!=fdNULL){ //last element
 		cerr << __LINE__ << endl;
@@ -759,41 +805,37 @@ int execCmd(char** argv, int (&fdCur)[2], int (&fdPrev)[2], bool dealloc){ //pro
 	}
 	exitSeen = false;
 	
-	int pid = fork();
-	if(pid == -1){ //error
-		perror("fork() error");
-		_exit(2);
-	}
-	else if(pid == 0){ //child process
-		//cerr << "in child" << endl;
-
-
-		//checking for nonexistent file; failing loud and clear
-		/*bool nonEx = false;
-		for(unsigned int i = 1; cmdD[i]!=NULL && !nonEx && cmdD[i][0]!='-'; i++){
-			if(-1 == open(cmdD[i], O_RDONLY)){
-				perror("open");
-				cerr << cmdD[0] << ": " << cmdD[i] << ": No such file or directory" << endl;
-				nonEx = true;
+	//checking if command is cd
+	if(strcmp(argv[0], "cd")==0){
+		execCD(argv);
+	}	
+	
+	else{
+		int pid = fork();
+		if(pid == -1){ //error
+			perror("fork() error");
+			_exit(2);
+		}
+		else if(pid == 0){ //child process
+			//cerr << "in child" << endl;
+			if(execvp(argv[0], argv) == -1){
+				perror("error in execvp"); //status becomes 256/512
+				_exit(2);
 			}
-		}*/
-		if(execvp(argv[0], argv) == -1){
-			perror("error in execvp"); //status becomes 256/512
 			_exit(2);
 		}
-		_exit(2);
-	}
-	else if(pid > 0){ //parent process
-		//cerr << "in parent" << endl;
-		if(wait(&status)==-1){		
-			perror("wait");
-			_exit(2);
+		else if(pid > 0){ //parent process
+			//cerr << "in parent" << endl;
+			if(wait(&status)==-1){		
+				perror("wait");
+				_exit(2);
+			}
 		}
-	}
-	//cout << "status: " << status << endl;
-	if(status!=0){ //command fails 
-		//cout << "command fails!\n";
-		return -1;
+		//cout << "status: " << status << endl;
+		if(status!=0){ //command fails 
+			//cout << "command fails!\n";
+			return -1;
+		}
 	}
 
 	//deallocate argv
@@ -947,20 +989,10 @@ void parseMaster(char* cmdB){
 	cmdC.clear();
 }
 
-int main(){
-	//close(2);
-	
-	//saving stdin
-	if(-1 == (savestdin = dup(0))){ //saving stdin
-		perror("dup");
-	}
-
-	//save stdout
-	if(-1 == (savestdout = dup(1))){
-		perror("dup");
-	}
-
+void prompt(){
 	while(1){
+		ackInt = false;
+		cin.clear();
 		string cmd, cmd2, stringToken;
 
 		char host[64];	//prompt
@@ -971,8 +1003,15 @@ int main(){
 		if(NULL == (login = getlogin())){
 			perror("getlogin");
 		}
-		
-		cout << login << '@' << host << "$ ";
+
+		//displays working directory
+		string pwd = findPWD();
+		string home = static_cast<string>(getenv("HOME"));
+		if(hasText(const_cast<char*>(pwd.c_str()), home)){
+			pwd.replace(0, home.size(), "~");
+		}
+
+		cout << GREEN << login << CYAN << '@' << GREEN << host << CYAN << ':'  << GREEN << pwd << CYAN << " $ " << RESET;
 		getline(cin, cmd);
 		
 		//filter comments
@@ -1006,18 +1045,6 @@ int main(){
 			bool cmdBDone = false;
 			while(!cmdBDone){
 				parseMaster(cmdB);	
-				
-				/*
-				int fdCur[2];
-				pipe(fdCur);
-				int fdPrev[2];
-				pipe(fdPrev);
-				dup2(fdPrev[WR], 1);
-				cout << "aAaaAaaaAAAAa";
-				io(parsePipes(cmdB)[0], fdCur, fdPrev);
-				exit(1);
-				*/
-
 				cmdB = strtok(NULL, ";");
 				if(cmdB==NULL){
 					cmdBDone = true;
@@ -1027,5 +1054,36 @@ int main(){
 			delete[] cmdB;
 		}
 	}
+}
+
+void sig(int signum){
+	if(signum==SIGINT){
+		cout << endl;
+		ackInt = true;
+		//prompt();
+	}
+}
+
+
+
+int main(){
+	//close(2);
+	
+	//saving stdin
+	if(-1 == (savestdin = dup(0))){ //saving stdin
+		perror("dup");
+	}
+
+	//save stdout
+	if(-1 == (savestdout = dup(1))){
+		perror("dup");
+	}
+
+	//set up sigaction here to call prompt()
+	struct sigaction ctrlC;
+	memset(&ctrlC, 0, sizeof(ctrlC));
+	ctrlC.sa_handler = sig;
+	sigaction(SIGINT, &ctrlC, NULL);
+	prompt();
 	return 0;
 }
