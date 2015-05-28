@@ -850,7 +850,7 @@ int execCmd(char** argv, int (&fdCur)[2], int (&fdPrev)[2], bool dealloc){ //pro
 	//checking if command is cd
 	if(strcmp(argv[0], "cd")==0){
 		if(-1 == execCD(argv)){
-			return -1;
+			status = -1;
 		}
 	}	
 	
@@ -885,7 +885,7 @@ int execCmd(char** argv, int (&fdCur)[2], int (&fdPrev)[2], bool dealloc){ //pro
 		//cout << "status: " << status << endl;
 		if(status!=0){ //command fails 
 			//cout << "command fails!\n";
-			return -1;
+			status = -1;
 		}
 	}
 
@@ -918,7 +918,7 @@ int cAND(vector<char*> &cmdC, char *cmdB, char **ptr){ //parse and execute && co
 	parseDelim(cmdC, cmdB, "&&", &*ptr);
 	int success = 1;
 	for(unsigned int i = 0; i<cmdC.size() && success!=-1; i++){
-		if(execCmd(parseSpace(cmdC[i]), fdNULL, fdNULL, false)==-1){ //command fails
+		if(execCmd(parseSpace(cmdC[i]), fdNULL, fdNULL, true)==-1){ //command fails
 			success = -1;
 		}
 	}
@@ -929,7 +929,7 @@ int cOR(vector<char*> &cmdC, char *cmdB, char **ptr){ //parse and execute || com
 	parseDelim(cmdC, cmdB, "||", &*ptr);
 	int success = -1;
 	for(unsigned int i = 0; i<cmdC.size() && success==-1; i++){
-		if(!execCmd(parseSpace(cmdC[i]), fdNULL, fdNULL, false)){ //command succeeds
+		if(!execCmd(parseSpace(cmdC[i]), fdNULL, fdNULL, true)){ //command succeeds
 			success = 1;
 		}
 	}
