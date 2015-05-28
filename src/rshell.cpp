@@ -1,7 +1,8 @@
 /*
 Michael Chen mchen046@ucr.edu
+NET ID: mchen046
 SID: 861108671
-CS100 Spring 2015: hw0-rshell
+CS100 Spring 2015: hw3-signals
 https://www.github.com/mchen046/rshell/blob/master/src/rshell.cpp
 */
 #include <iostream>
@@ -22,22 +23,41 @@ https://www.github.com/mchen046/rshell/blob/master/src/rshell.cpp
 #include <signal.h>
 
 #define RESET "\033[0m" //reset
-#define BOLDBLACK "\033[1m\033[30m"
-#define BOLDGREEN "\033[1m\033[32m"
-#define BOLDBLUE "\033[1m\033[34m"
 #define GREEN "\033[32m"
-#define BLUE "\033[34m"
 #define CYAN "\033[36m"
 
 using namespace std;
 using namespace boost;
 
-bool exitSeen = false, ackInt = false;
+bool exitSeen = false;
 const int RD = 0;
 const int WR = 1;
 int fdNULL[2];
 int savestdin;
 int savestdout;
+
+void printcmd(vector<char*> cmd);
+int sizeOfPart(char *cmdLine);
+bool hasText(char* cmdText, string text);
+bool isText(char* cmdText, string text);
+bool isNumericOnly(const string &str);
+char** parseSpace(const char *cmd);
+int execCmd(char** argv, int (&fdCur)[2], int (&fdPrev)[2], bool dealloc); //process spawning
+char* findDestFile(char **argv, unsigned int &anglePos, bool &seenRed);
+int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]);
+void redirExec(vector<char**> argvMaster);
+vector<char**> parsePipes(char* cmdB);
+int redir(char*cmdB);
+string findPWD();
+int execCD(char** argv);
+void parseDelim(vector<char*> &cmdC, char *cmdB, char const * delim, char **ptr);
+int cAND(vector<char*> &cmdC, char *cmdB, char **ptr); //parse and execute && command
+int cOR(vector<char*> &cmdC, char *cmdB, char **ptr); //parse and execute || command
+bool onlySpace(string str);
+bool checkConnector(string cmd, string &stringToken);
+void parseMaster(char* cmdB);
+void prompt();
+void sig(int signum);
 
 void printcmd(vector<char*> cmd){ //debugging cmdC
 	cout << "---------------\ncmd\n";
@@ -78,7 +98,7 @@ bool hasText(char* cmdText, string text){
 }
 
 bool isText(char* cmdText, string text){
-	if(!(cmdText[text.size()-1]==text[text.size()-1] && cmdText[text.size()]=='\0' && text[text.size()]=='\0')){
+	if(cmdText[text.size()-1]=='\0' || !(cmdText[text.size()-1]==text[text.size()-1] && cmdText[text.size()]=='\0' && text[text.size()]=='\0')){
 		return false;
 	}
 	for(unsigned int i = 0; cmdText[i]!='\0' && i<text.size(); i++){
@@ -141,7 +161,6 @@ char** parseSpace(const char *cmd){
 	//deallocate cmdExec?
 }
 
-int execCmd(char** argv, int (&fdCur)[2], int (&fdPrev)[2], bool dealloc); //process spawning
 
 char* findDestFile(char **argv, unsigned int &anglePos, bool &seenRed){ 
 	char* destFile = NULL;
@@ -183,9 +202,12 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 	unsigned int argc = 0;
 	char **argvExec = new char*[argvChild.size()+2];
 	for(unsigned  int i = 0; i<argvChild.size(); i++){
-		argvExec[i] = argvChild[i];
+		char* token = new char[strlen(argvChild[i])];
+		strcpy(token, argvChild[i]);
+		argvExec[i] = token;
 		if((i+1)==argvChild.size()){
 			argvExec[i+1] = NULL;
+		//}
 			argvExec[i+2] = NULL;
 		}
 		argc++;
@@ -230,7 +252,7 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 			bool fileExists = true;
 			
 			if(-1 == (fdGL = open(argv[i], O_RDONLY))){
-				perror("open");
+				perror("open: false positive");
 				fileExists = false;
 				//status = -1;
 			}
@@ -273,7 +295,7 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 			pos = i;
 			if(strcmp(argv[prevPos], "<") == 0){
 				numL++;
-				if(strcmp(argv[0], "cat")==0 && files.size()==1 && (((numL==1 && numG==0 && argc-firstAnglePos==3) || argv[i+1]==NULL) || (argvExec[1]!=NULL))){
+				if(files.size()==1 && (((numL==1 && numG==0 && argc-firstAnglePos==3) || argv[i+1]==NULL) || (argvExec[1]!=NULL))){
 					if(argvExec[1]==NULL && cnt == 0){
 						cnt++;
 						char* token = new char[strlen(const_cast<char*>(files[0].c_str()))];
@@ -299,7 +321,7 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 						}
 					}
 				}
-				else if(files.size()==1 && cnt==0 && strcmp(argv[0], "cat")==0 && numL==cntL){
+				else if(files.size()==1 && cnt==0 && numL==cntL){
 					cnt++;
 					char* token = new char[strlen(const_cast<char*>(files[0].c_str()))];
 					strcpy(token, files[0].c_str());
@@ -345,8 +367,24 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 					}
 				}
 
-				else if(files.size()==1 && seenRed && strcmp(argv[i],destFile)==0 && numL==0 && argvExec[1]==NULL && cnt==0 && strcmp(argv[0], "cat")==0){ //first and last element of pipe seg
-					string userInput;
+				else if(files.size()==1 && seenRed && strcmp(argv[i],destFile)==0 && numL==0 && cnt==0){ //first and last element of pipe seg
+
+					if(-1 == execCmd(argvExec, fdCur, fdPrev, false)){
+						perror("execCmd");
+					}
+					if(-1 == (fdGL = open(destFile, O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR))){
+						perror("open");
+					}
+					int size = 0;
+					char c[BUFSIZ];
+					if(-1 == (size = read(fdCur[RD], &c, sizeof(c)))){
+						perror("read");
+					}
+					if(-1 == write(fdGL, &c, size)){
+						perror("write");
+					}
+					
+					/*string userInput;
 					if(-1 == dup2(savestdin, 0)){ //restore stdin
 						perror("dup2");
 					}
@@ -361,14 +399,15 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 						getline(cin, userInput);
 						userInput += '\n';
 						//write to the file here
-						if(-1 == (fdGL = open(destFile, O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR))){
+						if(-1 == (fdGL = open(destFile, O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR))){
 							perror("open");
 						}
+
 						if(-1 == write(fdGL, const_cast<char*>(userInput.c_str()), userInput.size())){
 							perror("write");
 						}
 					}
-					//mimicking a ctrl c exit similar to bash's behavior
+					//mimicking a ctrl c exit similar to bash's behavior*/
 				}
 									
 				else if(argvExec[1]!=NULL && files.size()==1 && cnt==0){
@@ -377,6 +416,8 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 						return -1;
 					}
 				}
+
+
 				
 				for(unsigned int j = 1; j < files.size(); j++){ //write to fdChild pipe
 					if(strcmp(files[j].c_str(), destFile)!=0){
@@ -432,10 +473,12 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 		}
 	}
 	//deallocate char** argvExec
-	for(unsigned int i = 0; argvExec[i]!=NULL; i++){
+	for(unsigned int i = 0; i<argvChild.size()+2; i++){
 		delete[] argvExec[i];
 	}
 	delete[] argvExec;
+
+	argvChild.clear();
 		
 	return 1;
 	//deallocate vector<char**> cmdExec
@@ -596,7 +639,6 @@ void redirExec(vector<char**> argvMaster){
 				}
 			}
 		}
-		//}
 	}
 }
 
@@ -638,13 +680,13 @@ int redir(char*cmdB){
 	
 	redirExec(argvMaster);
 
-	/*for(unsigned int i = 0; i<argvMaster.size(); i++){
+	for(unsigned int i = 0; i<argvMaster.size(); i++){
 		for(unsigned int j = 0; argvMaster[i][j]!=NULL; j++){
 			delete[] argvMaster[i][j];
 		}
 		delete argvMaster[i];
 	}
-	argvMaster.clear();*/
+	argvMaster.clear();
 
 	if(-1 == dup2(savestdin, 0)){ //restore stdin
 		perror("dup2");
@@ -716,12 +758,11 @@ string findPWD(){
 
 	return workDir;
 }
-void execCD(char** argv){
+int execCD(char** argv){
 	string pwd = findPWD();
 
 	char* home = getenv("HOME");
 	bool alt = false;
-	bool failed = false;
 	
 	if(argv[1]==NULL){
 		alt = true;	
@@ -729,33 +770,34 @@ void execCD(char** argv){
 
 	if(!alt && strcmp(argv[1], "-")==0 && -1 == chdir(getenv("OLDPWD"))){
 		perror("chdir");
-		failed = true;
+		return -1;
 	}
 
 	if(!alt && strcmp(argv[1], "-")!=0 && -1 == chdir(argv[1])){
 		perror("chdir");
-		failed = true;
+		return -1;
 	}
 
 	if(alt && -1 == chdir(home)){
 		perror("chdir");
-		failed = true;
+		return -1;
 	}
 
 	//set OLDPWD
-	if(!failed && -1 == setenv("OLDPWD", const_cast<char*>(pwd.c_str()), 1)){
+	if(-1 == setenv("OLDPWD", const_cast<char*>(pwd.c_str()), 1)){
 		perror("setenv");
 	}
 
 	//print OLDPWD
 	//cerr << "OLDPWD: " << getenv("OLDPWD") << endl;
 
-	if(!failed && -1 == setenv("PWD", const_cast<char*>(findPWD().c_str()), 1)){
+	if(-1 == setenv("PWD", const_cast<char*>(findPWD().c_str()), 1)){
 		perror("setenv");
 	}
 	
 	//print PWD
 	//cerr << "PWD: " << getenv("PWD") << endl;
+	return 1;
 }
 
 
@@ -807,26 +849,35 @@ int execCmd(char** argv, int (&fdCur)[2], int (&fdPrev)[2], bool dealloc){ //pro
 	
 	//checking if command is cd
 	if(strcmp(argv[0], "cd")==0){
-		execCD(argv);
+		if(-1 == execCD(argv)){
+			return -1;
+		}
 	}	
 	
 	else{
 		int pid = fork();
+
 		if(pid == -1){ //error
 			perror("fork() error");
 			_exit(2);
 		}
+		
 		else if(pid == 0){ //child process
 			//cerr << "in child" << endl;
 			if(execvp(argv[0], argv) == -1){
-				perror("error in execvp"); //status becomes 256/512
+				perror("execvp"); //status becomes 256/512
 				_exit(2);
 			}
 			_exit(2);
 		}
 		else if(pid > 0){ //parent process
 			//cerr << "in parent" << endl;
-			if(wait(&status)==-1){		
+			int wpid;
+			//int errno = 0;
+			do{
+				wpid = wait(&status);
+			}while(wpid == -1 && errno == EINTR);
+			if(wpid==-1){		
 				perror("wait");
 				_exit(2);
 			}
@@ -925,7 +976,7 @@ bool checkConnector(string cmd, string &stringToken){
 void parseMaster(char* cmdB){
 	char *ptr;
 	vector <char*> cmdC;
-	if((hasText(cmdB, "<") || hasText(cmdB, ">") || hasText(cmdB, "|")) || ((hasText(cmdB, "\"") || hasText(cmdB, "(") || hasText(cmdB, ")")) && !hasText(cmdB, "&&") && !hasText(cmdB, "||"))){
+	if(((hasText(cmdB, "<") || hasText(cmdB, ">") || hasText(cmdB, "|")) && !hasText(cmdB, "||") && !hasText(cmdB, "&&")) || ((hasText(cmdB, "\"") || hasText(cmdB, "(") || hasText(cmdB, ")")) && !hasText(cmdB, "&&") && !hasText(cmdB, "||"))){
 		if(hasText(cmdB, "&") || hasText(cmdB, "|") || hasText(cmdB, "<") || hasText(cmdB, ">")){
 			redir(cmdB);
 		}
@@ -936,7 +987,7 @@ void parseMaster(char* cmdB){
 	}
 	else if(!hasText(cmdB, "&&") && !hasText(cmdB, "||")){
 		//execute
-		execCmd(parseSpace(cmdB), fdNULL, fdNULL, false);
+		execCmd(parseSpace(cmdB), fdNULL, fdNULL, true);
 	}
 	else if(hasText(cmdB, "&&") && !hasText(cmdB, "||")){ //only has &&
 		cAND(cmdC, cmdB, &ptr);
@@ -960,7 +1011,7 @@ void parseMaster(char* cmdB){
 						succeed	= true;
 					}
 				}
-				else if(!execCmd(parseSpace(cmdC[i]), fdNULL, fdNULL, false)){
+				else if(!execCmd(parseSpace(cmdC[i]), fdNULL, fdNULL, true)){
 					succeed = true;
 				}
 			}
@@ -991,7 +1042,6 @@ void parseMaster(char* cmdB){
 
 void prompt(){
 	while(1){
-		ackInt = false;
 		cin.clear();
 		string cmd, cmd2, stringToken;
 
@@ -1051,7 +1101,7 @@ void prompt(){
 				}
 			}
 			delete[] cmdA;
-			delete[] cmdB;
+			//delete[] cmdB;
 		}
 	}
 }
@@ -1059,12 +1109,8 @@ void prompt(){
 void sig(int signum){
 	if(signum==SIGINT){
 		cout << endl;
-		ackInt = true;
-		//prompt();
 	}
 }
-
-
 
 int main(){
 	//close(2);
