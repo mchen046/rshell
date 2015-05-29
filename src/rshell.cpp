@@ -369,9 +369,7 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 
 				else if(files.size()==1 && seenRed && strcmp(argv[i],destFile)==0 && numL==0 && cnt==0){ //first and last element of pipe seg
 
-					if(-1 == execCmd(argvExec, fdCur, fdPrev, false)){
-						perror("execCmd");
-					}
+					execCmd(argvExec, fdCur, fdPrev, false);
 					if(-1 == (fdGL = open(destFile, O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR))){
 						perror("open");
 					}
@@ -537,6 +535,7 @@ void redirExec(vector<char**> argvMaster){
 		int status = 0;
 		int pid = fork();
 		pids.push_back(pid);
+
 		bool next = false;
 		if(-1 == pid){
 			perror("fork");
@@ -762,13 +761,15 @@ string findPWD(){
 int execCD(char** argv){
 	string pwd = findPWD();
 	char* home = getenv("HOME");
-	char* token = new char[strlen(home)];
-	bool alt = false, dealloc = true;
-	if(strcmp(argv[1], "~")==0){ //home folder
-		strcpy(token, home);
+	char* token;
+	bool alt = false;
+	if(argv[1]!=NULL && argv[1][0] == '~'){ //home folder
+		string seg = static_cast<string>(argv[1]).erase(0,1);
+		token = new char[strlen(home) + seg.size()];
+		string seg2 = static_cast<string>(home) + seg;
+		strcpy(token, const_cast<char*>(seg2.c_str()));
 		delete[] argv[1];
 		argv[1] = token;
-		dealloc = false;
 	}
 	if(argv[1]==NULL){
 		alt = true;	
@@ -792,9 +793,6 @@ int execCD(char** argv){
 	//set PWD
 	if(-1 == setenv("PWD", const_cast<char*>(findPWD().c_str()), 1)){
 		perror("setenv");
-	}
-	if(dealloc){
-		delete[] token;
 	}
 	return 1;
 }
@@ -1105,10 +1103,10 @@ void prompt(){
 
 void sig(int signum){
 	if(signum==SIGINT){ //ctrl C
-		cout << endl;
+		cerr << endl;
 	}
 	if(signum==SIGTSTP){ //ctrl Z
-		cout << endl << "^Z has been captured!" << endl;
+		cerr << endl << "^Z has been captured!" << endl;
 	}
 }
 
