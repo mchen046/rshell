@@ -758,50 +758,47 @@ string findPWD(){
 
 	return workDir;
 }
+
 int execCD(char** argv){
 	string pwd = findPWD();
-
 	char* home = getenv("HOME");
-	bool alt = false;
-	
+	char* token = new char[strlen(home)];
+	bool alt = false, dealloc = true;
+	if(strcmp(argv[1], "~")==0){ //home folder
+		strcpy(token, home);
+		delete[] argv[1];
+		argv[1] = token;
+		dealloc = false;
+	}
 	if(argv[1]==NULL){
 		alt = true;	
 	}
-
 	if(!alt && strcmp(argv[1], "-")==0 && -1 == chdir(getenv("OLDPWD"))){
 		perror("chdir");
 		return -1;
 	}
-
 	if(!alt && strcmp(argv[1], "-")!=0 && -1 == chdir(argv[1])){
 		perror("chdir");
 		return -1;
 	}
-
 	if(alt && -1 == chdir(home)){
 		perror("chdir");
 		return -1;
 	}
-
 	//set OLDPWD
 	if(-1 == setenv("OLDPWD", const_cast<char*>(pwd.c_str()), 1)){
 		perror("setenv");
 	}
-
-	//print OLDPWD
-	//cerr << "OLDPWD: " << getenv("OLDPWD") << endl;
-
+	//set PWD
 	if(-1 == setenv("PWD", const_cast<char*>(findPWD().c_str()), 1)){
 		perror("setenv");
 	}
-	
-	//print PWD
-	//cerr << "PWD: " << getenv("PWD") << endl;
+	if(dealloc){
+		delete[] token;
+	}
 	return 1;
 }
 
-
-	
 int execCmd(char** argv, int (&fdCur)[2], int (&fdPrev)[2], bool dealloc){ //process spawning
 	if(fdCur!=fdNULL && fdPrev==fdNULL){ //first element
 		//cerr << __LINE__ << endl;	
@@ -1107,8 +1104,11 @@ void prompt(){
 }
 
 void sig(int signum){
-	if(signum==SIGINT){
+	if(signum==SIGINT){ //ctrl C
 		cout << endl;
+	}
+	if(signum==SIGTSTP){ //ctrl Z
+		cout << endl << "^Z has been captured!" << endl;
 	}
 }
 
@@ -1125,11 +1125,14 @@ int main(){
 		perror("dup");
 	}
 
-	//set up sigaction here to call prompt()
-	struct sigaction ctrlC;
-	memset(&ctrlC, 0, sizeof(ctrlC));
-	ctrlC.sa_handler = sig;
-	sigaction(SIGINT, &ctrlC, NULL);
+	//set up sigaction here to call sig
+	struct sigaction sigObj;
+	memset(&sigObj, 0, sizeof(sigObj));
+	sigObj.sa_handler = sig;
+	sigaction(SIGINT, &sigObj, NULL);
+	sigaction(SIGTSTP, &sigObj, NULL);
+
 	prompt();
+
 	return 0;
 }
