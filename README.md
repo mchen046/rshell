@@ -165,7 +165,7 @@ are supposed to redirect the output of `cat eif` into `eif2` as well as executin
 
 **1. supported signals**
 
-rshell only support the `SIGINT` signal, also known as `^C`. Signals such as `^Z`, `fg`, and `bg` are not captured correctly. `^Z` suspends the entire rshell process rather than the current running process.
+rshell only supports the `SIGINT` signal, also known as `^C`. Signals such as `^Z`, `fg`, and `bg` are not captured correctly. `^Z` suspends the entire rshell process rather than the current running process within rshell.
 
 **2. multiple instances of rshell**
 
