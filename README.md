@@ -161,6 +161,19 @@ Commands similar to
 
 are supposed to redirect the output of `cat eif` into `eif2` as well as executing `cat eif5`. However, rshell does not take into many similar accounts of pipe segments, specifically ones that contain i/o redirection and are chained side by side.
 
+### Bugs/Limitations/Issues for signals and the `cd` command
+
+**1. supported signals**
+
+rshell only support the `SIGINT` signal, also known as `^C`. Signals such as `^Z`, `fg`, and `bg` are not captured correctly. `^Z` suspends the entire rshell process rather than the current running process.
+
+**2. multiple instances of rshell**
+
+Multiple instances of rshell cause `^C` to display an extra new line.
+
+
+
+
 
 
 
