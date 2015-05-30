@@ -368,6 +368,14 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 				}
 
 				else if(files.size()==1 && seenRed && strcmp(argv[i],destFile)==0 && numL==0 && cnt==0){ //first and last element of pipe seg
+					int errno;
+					if(-1 == fcntl(fdCur[RD], F_SETFL, O_NONBLOCK)){
+						perror("fcntl");
+					}
+
+					/*if(-1 == fcntl(fdCur[WR], F_SETFL, O_NONBLOCK)){
+						perror("fcntl");
+					}*/
 
 					execCmd(argvExec, fdCur, fdPrev, false);
 					if(-1 == (fdGL = open(destFile, O_CREAT | O_WRONLY | O_APPEND, S_IRUSR | S_IWUSR))){
@@ -376,10 +384,16 @@ int io(char** argv, int (&fdCur)[2], int(&fdPrev)[2]){
 					int size = 0;
 					char c[BUFSIZ];
 					if(-1 == (size = read(fdCur[RD], &c, sizeof(c)))){
-						perror("read");
+						if(errno == EAGAIN){} //trying to read form an empty pipe;
+						else{
+							perror("read");
+						}
 					}
-					if(-1 == write(fdGL, &c, size)){
+					if(errno != EAGAIN && -1 == write(fdGL, &c, size)){
 						perror("write");
+					}
+					if(-1 == close(fdGL)){
+						perror("close");
 					}
 					
 					/*string userInput;
@@ -1105,9 +1119,9 @@ void sig(int signum){
 	if(signum==SIGINT){ //ctrl C
 		cerr << endl;
 	}
-	if(signum==SIGTSTP){ //ctrl Z
+	/*if(signum==SIGTSTP){ //ctrl Z
 		cerr << endl << "^Z has been captured!" << endl;
-	}
+	}*/
 }
 
 int main(){
@@ -1128,7 +1142,7 @@ int main(){
 	memset(&sigObj, 0, sizeof(sigObj));
 	sigObj.sa_handler = sig;
 	sigaction(SIGINT, &sigObj, NULL);
-	sigaction(SIGTSTP, &sigObj, NULL);
+	//sigaction(SIGTSTP, &sigObj, NULL);
 
 	prompt();
 
