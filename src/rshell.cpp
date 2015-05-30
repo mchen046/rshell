@@ -788,9 +788,12 @@ int execCD(char** argv){
 	if(argv[1]==NULL){
 		alt = true;	
 	}
-	if(!alt && strcmp(argv[1], "-")==0 && -1 == chdir(getenv("OLDPWD"))){
-		perror("chdir");
-		return -1;
+	if(!alt && strcmp(argv[1], "-")==0){
+		if(-1 == chdir(getenv("OLDPWD"))){
+			perror("chdir");
+			return -1;
+		}
+		cout << findPWD() << endl;
 	}
 	if(!alt && strcmp(argv[1], "-")!=0 && -1 == chdir(argv[1])){
 		perror("chdir");
