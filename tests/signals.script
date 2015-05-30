@@ -1,0 +1,86 @@
+Script started on Fri 29 May 2015 05:56:37 PM PDT
+~
+mchen046@hammer $ cs100
+[0;91m
+===============================================================================
+|                                                                             |
+| You have enabled settings specific for cs100.  Everything you do is being   |
+| recorded to measure your progress in the class.                             |
+|                                                                             |
+| Important commands for the class:                                           |
+|   * calcgrade.sh          displays a detailed breakdown of your grade       |
+|   * checksyscalls.sh      is your cpp file doing proper error checking?     |
+|   * typespeed             practice typing unix commands                     |
+|                                                                             |
+| Important commands for general C++ programming:                             |
+|   * make                  don't call g++ manually; let make do the work!    |
+|   * gdb                   the GNU debugger                                  |
+|   * valgrind              get rid of your memory leaks                      |
+|   * cppcheck              static analysis tool                              |
+|   * man                   find help about any syscall / terminal command    |
+|                                                                             |
+===============================================================================
+[0m
+[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~[0;95m [0;36m$[0m cd CS100/rshell
+[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~/CS100/rshell[0;95m (signals) [0;36m$[0m cd[K[Kmake
+if [ ! -d bin ]; then mkdir bin; fi
+g++ -std=c++11 -Wall -Werror -pedantic ./src/rshell.cpp -o bin/rshell
+g++ -std=c++11 -Wall -Werror -pedantic ./src/cp.cpp -o bin/cp
+g++ -std=c++11 -Wall -Werror -pedantic ./src/ls.cpp -o bin/ls
+g++ -std=c++11 -Wall -Werror -pedantic ./src/mv.cpp -o bin/mv
+g++ -std=c++11 -Wall -Werror -pedantic ./src/rm.cpp -o bin/rm
+[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~/CS100/rshell[0;95m (signals) [0;36m$[0m [K[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~/CS100/rshell[0;95m (signals) [0;36m$[0m [K[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~/CS100/rshell[0;95m (signals) [0;36m$[0m [K[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~/CS100/rshell[0;95m (signals) [0;36m$[0m [K[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~/CS100/rshell[0;95m (signals) [0;36m$[0m [K[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~/CS100/rshell[0;95m (signals) [0;36m$[0m [K[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~/CS100/rshell[0;95m (signals) [0;36m$[0m [K[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~/CS100/rshell[0;95m (signals) [0;36m$[0m [K[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~/CS100/rshell[0;95m (signals) [0;36m$[0m [K[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~/CS100/rshell[0;95m (signals) [0;36m$[0m [K[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~/CS100/rshell[0;95m (signals) [0;36m$[0m [K[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~/CS100/rshell[0;95m (signals) [0;36m$[0m bin/rshell
+[32mmchen046[36m@[32mhammer.cs.ucr.edu[36m:[32m~/CS100/rshell[36m $ [0mcd
+[32mmchen046[36m@[32mhammer.cs.ucr.edu[36m:[32m~[36m $ [0mcd -
+[32mmchen046[36m@[32mhammer.cs.ucr.edu[36m:[32m~/CS100/rshell[36m $ [0mcd -
+[32mmchen046[36m@[32mhammer.cs.ucr.edu[36m:[32m~[36m $ [0mcd -
+[32mmchen046[36m@[32mhammer.cs.ucr.edu[36m:[32m~/CS100/rshell[36m $ [0mcd -
+[32mmchen046[36m@[32mhammer.cs.ucr.edu[36m:[32m~[36m $ [0mcd -
+[32mmchen046[36m@[32mhammer.cs.ucr.edu[36m:[32m~/CS100/rshell[36m $ [0mcd    #~   to;   i tild ~  e ~ home folder
+[32mmchen046[36m@[32mhammer.cs.ucr.edu[36m:[32m~/CS100/rshell[36m $ [0mcd ~
+[32mmchen046[36m@[32mhammer.cs.ucr.edu[36m:[32m~[36m $ [0mcd -
+[32mmchen046[36m@[32mhammer.cs.ucr.edu[36m:[32m~/CS100/rshell[36m $ [0mcd -
+[32mmchen046[36m@[32mhammer.cs.ucr.edu[36m:[32m~[36m $ [0mcd CS100/rshell
+[32mmchen046[36m@[32mhammer.cs.ucr.edu[36m:[32m~/CS100/rshell[36m $ [0mcd ~/CS100/
+[32mmchen046[36m@[32mhammer.cs.ucr.edu[36m:[32m~/CS100[36m $ [0m#on  connectors
+[32mmchen046[36m@[32mhammer.cs.ucr.edu[36m:[32m~/CS100[36m $ [0mcd ~ && cd CD100/     S100/rshell
+[32mmchen046[36m@[32mhammer.cs.ucr.edu[36m:[32m~/CS100/rshell[36m $ [0mcd badDir || cd ~
+chdir: No such file or directory
+[32mmchen046[36m@[32mhammer.cs.ucr.edu[36m:[32m~[36m $ [0mcd badDir |\ cd      | cd badDir || cd ~ && cd CD S100/rshell
+chdir: No such file or directory
+chdir: No such file or directory
+[32mmchen046[36m@[32mhammer.cs.ucr.edu[36m:[32m~/CS100/rshell[36m $ [0m#cat
+[32mmchen046[36m@[32mhammer.cs.ucr.edu[36m:[32m~/CS100/rshell[36m $ [0mcat > eif
+hello world
+this is a test file
+using the command cat
+^C
+[32mmchen046[36m@[32mhammer.cs.ucr.edu[36m:[32m~/CS100/rshell[36m $ [0mcat eif
+hello world
+this is a test file
+using the command cat
+[32mmchen046[36m@[32mhammer.cs.ucr.edu[36m:[32m~/CS100/rshell[36m $ [0mps
+  PID TTY          TIME CMD
+ 5922 pts/55   00:00:00 bash
+ 6062 pts/55   00:00:00 rshell
+ 6586 pts/55   00:00:00 ps
+[32mmchen046[36m@[32mhammer.cs.ucr.edu[36m:[32m~/CS100/rshell[36m $ [0m#sort
+[32mmchen046[36m@[32mhammer.cs.ucr.edu[36m:[32m~/CS100/rshell[36m $ [0msort > eif
+hello world
+these e will not get printed       written to the test file
+^C
+[32mmchen046[36m@[32mhammer.cs.ucr.edu[36m:[32m~/CS100/rshell[36m $ [0mcat eif
+[32mmchen046[36m@[32mhammer.cs.ucr.edu[36m:[32m~/CS100/rshell[36m $ [0mps
+  PID TTY          TIME CMD
+ 5922 pts/55   00:00:00 bash
+ 6062 pts/55   00:00:00 rshell
+ 6701 pts/55   00:00:00 ps
+[32mmchen046[36m@[32mhammer.cs.ucr.edu[36m:[32m~/CS100/rshell[36m $ [0m^C
+[32mmchen046[36m@[32mhammer.cs.ucr.edu[36m:[32m~/CS100/rshell[36m $ [0mexit
+[s%%%%%%%%%%[u[0;32mmchen046[0;36m@[0;32mcs100[0;36m:[0;32m~/CS100/rshell[0;95m (signals) [0;36m$[0m exit
+exit
+~
+mchen046@hammer $ exit
+exit
+
+Script done on Fri 29 May 2015 05:59:59 PM PDT
